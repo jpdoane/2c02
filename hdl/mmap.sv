@@ -59,20 +59,20 @@ module mmap #(
     // Other: Some advanced mappers can present arbitrary combinations of CIRAM, VRAM, or even CHR ROM in the nametable area. Such exotic setups are rarely used.
 
     //CHR
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         c_data <= CHR[chr_addr];
         if (cs && ~rw) CHR[chr_addr] <= data_i;
         cs_r <= cs;
     end
 
     //VRAM
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         v_data <= VRAM[vram_addr];
         if (~cs && ~rw) VRAM[vram_addr] <= data_i;
     end
 
     // final mux
-    always @(*) begin
+    always_comb begin
         data_o = cs_r ? c_data : v_data;
     end
 

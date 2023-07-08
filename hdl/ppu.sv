@@ -20,7 +20,7 @@ module ppu
     logic reg_re, reg_we, cs_r;
 
     // cs re detection
-    always @(posedge clk ) begin
+    always_ff @(posedge clk) begin
         if (rst) begin
             cs_r <= 0;
         end else begin
@@ -33,7 +33,7 @@ module ppu
     // cpu/ppu read / write registers
     logic cpu_ppu_read;
     logic [7:0] cpu_data_io, cpu_readbuf;
-    always @(posedge clk ) begin
+    always_ff @(posedge clk) begin
         if (rst) begin
             ppu_data_o <= 0;
             cpu_readbuf <= 0;
@@ -75,7 +75,7 @@ module ppu
     wire status_clr;                //signal to clear status regs
 
     assign ppu_rd = ~ppu_wr;
-    always @(posedge clk ) begin
+    always_ff @(posedge clk) begin
         if (rst) begin
             ppuctrl <= 0;
             ppumask <= 0;
@@ -254,6 +254,12 @@ module ppu
                         fetch_chr ? chr_addr :
                         {2'h2, v[11:0]};
 
+    // wire lower_tile = v[6];
+    // wire left_tile = v[1];
+    // wire [1:0] attr_decode = lower_tile ? left_tile ? ppu_data_i[7:6] : ppu_data_i[5:4]: //lower left / right tile
+    //                                       left_tile ? ppu_data_i[3:2] : ppu_data_i[1:0]; //upper left / right tile
+
+
     logic [1:0] attr_decode;
     always @(*) begin
         if (v[6]) // lower
@@ -261,7 +267,6 @@ module ppu
         else      // upper
             attr_decode = v[1] ? ppu_data_i[3:2] : ppu_data_i[1:0]; //upper left / right tile
     end
-
 
 
     // palette memory

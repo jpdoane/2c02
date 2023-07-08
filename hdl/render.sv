@@ -36,7 +36,7 @@ module render
 
     logic sp_eval;
 
-    always @(posedge clk ) begin
+    always_ff @(posedge clk) begin
         if (rst) begin
             // fetch_attr <= 0;
             // fetch_chr <= 0;
@@ -62,13 +62,6 @@ module render
             pat1 <= save_pat1 ? data_i : pat1;
 
             sp_eval <= sp_eval;
-            // fetch_attr <= 0;
-            // fetch_chr <= 0;
-            // nt <= nt;
-            // pal <= pal;
-            // pat0 <= pat0;
-            // pat1 <= pat1;
-            // load_sr<=0;
 
             inc_cx <= 0;
             inc_y <= 0;
@@ -103,27 +96,11 @@ module render
                 Y_BLANK:        vblank <= 1;
             endcase
 
-
-            // if (rend) begin
-            //     // register action for *next* cycle
-            //     case(cycle[2:0])
-            //         3'h0:   load_sr <=1;        // load shift regs and fetch nametable (default)
-            //         3'h1:   nt <= data_i;       // save bg nametable
-            //         3'h2:   fetch_attr <= 1;    // fetch bg attr
-            //         3'h3:   pal <= attr_i;      // save bg palette
-            //         3'h4:   fetch_chr <= 1;     // fetch pattern bit 0
-            //         3'h5:   pat0 <= data_i;     // save pat0
-            //         3'h6:   fetch_chr <= 1;     // fetch pattern bit 1
-            //         3'h7:   begin
-            //                 pat1 <= data_i;     // save pat1
-            //                 inc_cx <= 1;        // increment coarse x (next tile)
-            //                 end
-            //     endcase
-            // end
         end
     end
 
-    always @(*) begin
+    wire [2:0] cycle8 = cycle[2:0];
+    always_comb begin
         load_sr = 0;
         fetch_nt = 0;
         fetch_attr = 0;
@@ -134,7 +111,7 @@ module render
         save_pat0 = 0;
         save_pat1 = 0;
         if (rend) begin
-            case(cycle[2:0])
+            case(cycle8)
                 3'h0:   begin load_sr =1; fetch_nt=1; end
                 3'h1:   save_nt = 1;
                 3'h2:   fetch_attr = 1;
@@ -151,16 +128,15 @@ module render
     logic pat_bitsel;
     assign pat_bitsel = cycle[1]; //fetch pattern bit 0 on cycle 4 (mod8), and pattern bit 1 on cycle 6 (mod8)
     assign pattern_idx = {ppuctrl[PPUCTRL_B], nt, pat_bitsel, fine_y};
-    // assign sp_pat0_idx = ppuctrl[PPUCTRL_H] ? {ppuctrl[PPUCTRL_S], nt, 1'b0, fine_y}:
-    //                                           {nt[0], nt[7:1], y[3], 1'b0, fine_y};
 
+    // assign pattern_idx = pattern_sp | pattern_bg;
 
     // background shift registers
     logic [2:0]  pal_dat;          //palette
     logic [7:0]  pal_sr1, pal_sr0;          //palette
     logic [15:0] tile_sr1, tile_sr0;        //tile data
     logic sr_en;        //enable shifting
-    always @(posedge clk ) begin
+    always_ff @(posedge clk) begin
         if (rst) begin
             tile_sr0 <= 0;
             tile_sr1 <= 0;
@@ -199,7 +175,7 @@ module render
     logic [7:0] tile_sr0_out, tile_sr1_out;
     assign tile_sr0_out = tile_sr0[15:8];
     assign tile_sr1_out = tile_sr1[15:8];
-    always @(*) begin
+    always_comb begin
         bg_px = {tile_sr1_out[fine_x], tile_sr0_out[fine_x]};
         bg_pal = {pal_sr1[fine_x], pal_sr0[fine_x]};
     end
@@ -232,7 +208,7 @@ module render
     // logic [7:0]  sp5_sr0, sp5_sr1;  //sp 5
     // logic [7:0]  sp6_sr0, sp6_sr1;  //sp 6
     // logic [7:0]  sp7_sr0, sp7_sr1;  //sp 7
-    // always @(posedge clk ) begin
+    // always_ff @(posedge clk) begin
     //     if (rst) begin
     //         sp0_sr0 <= 0;
     //         sp0_sr1 <= 0;
@@ -294,7 +270,7 @@ module render
     // int [7:0] sp0_x, sp1_x, sp2_x, sp3_x, sp4_x, sp5_x, sp6_x, sp7_x,
     // logic sp0_en, sp1_en, sp2_en, sp3_en, sp4_en, sp5_en, sp6_en, sp7_en;
 
-    // always @(posedge clk ) begin
+    // always_ff @(posedge clk) begin
     //     // decrement sprite x position counters 
     //     sp0_x <= sp0_en ? sp0_x : sp0_x - 1;
     //     sp1_x <= sp1_en ? sp1_x : sp1_x - 1;
@@ -309,7 +285,7 @@ module render
     // // sprite enable and pixel mux
     // logic [1:0] sp_px, sp0_px, sp1_px, sp2_px, sp3_px, sp4_px, sp5_px, sp6_px, sp7_px;
     // logic sp_pri, sp7_pri, sp6_pri, sp5_pri, sp4_pri, sp3_pri, sp2_pri, sp1_pri, sp0_pri;
-    // always @(*) begin
+    // always_comb begin
     //     // sprites are enabled once their counter reaches 0
     //     sp0_en = sp0_x==0;
     //     sp1_en = sp1_x==0;

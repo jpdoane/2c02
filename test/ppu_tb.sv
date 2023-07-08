@@ -1,4 +1,4 @@
-`timescale 1us/1ns
+`timescale 1us/1us
 
 
 module ppu_tb ();

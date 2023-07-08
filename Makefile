@@ -36,6 +36,7 @@ sim/%.$(WAVEEXT): sim/%.$(SIMEXT)
 clean:
 	rm -rf sim/*.$(SIMEXT)
 	rm -rf sim/*.$(WAVEEXT)
+	rm -rf frames/*
 
 # keep intermediate files
 .SECONDARY:

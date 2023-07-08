@@ -1,7 +1,8 @@
 module video #(
     parameter PALFILE="rom/nes.pal",
     parameter IMAGE_W=256,
-    parameter IMAGE_H=240
+    parameter IMAGE_H=240,
+    parameter MAX_FRAMES=1
     )
     (
     input logic clk, rst,
@@ -35,9 +36,13 @@ module video #(
             if (new_frame) begin
                 if( file != 0) begin
                     $fclose(file);
-                    $display("Closed %s",filename);
+                    $display("Closed %s at #%0t",filename, $realtime);
                     file=0;
                     file_open <= 0;
+                    if (frame_cnt >= MAX_FRAMES) begin
+                        $display("Processed %0d frame(s), terminating sim", frame_cnt);
+                        $finish;
+                    end
                 end
                 frame_cnt = frame_cnt+1;
                 filename = $sformatf("frames/frame_%0d.ppm", frame_cnt);
@@ -65,7 +70,7 @@ module video #(
     final begin
         if( file != 0) begin
             $fclose(file);
-            $display("Closed %s (prematurely)",filename);
+            $display("Closed %s (prematurely) at #%0t",filename, $realtime);
         end
     end
 endmodule

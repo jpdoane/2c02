@@ -1,5 +1,5 @@
 
-module sprites #(
+module oam #(
         parameter OAM_INIT="rom/smb_oam.rom"
     )(
     input logic clk, rst, rend,

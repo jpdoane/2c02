@@ -1,30 +1,33 @@
 [*]
 [*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
-[*] Tue Jul  4 23:40:27 2023
+[*] Sat Jul  8 22:55:02 2023
 [*]
-[dumpfile] "/home/jpdoane/dev/ppu/sim/ppu.vcd"
-[dumpfile_mtime] "Tue Jul  4 23:27:40 2023"
-[dumpfile_size] 22995236
-[savefile] "/home/jpdoane/dev/ppu/sim/ppu.sav"
-[timestart] 98996880
-[size] 971 1015
-[pos] -12 -1
-*-13.677581 99011000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[dumpfile] "/home/jpdoane/dev/2c02/sim/ppu.vcd"
+[dumpfile_mtime] "Sat Jul  8 22:53:21 2023"
+[dumpfile_size] 33363617
+[savefile] "/home/jpdoane/dev/2c02/sim/ppu.sav"
+[timestart] 671240
+[size] 960 1015
+[pos] -1 -1
+*-13.677581 687000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] ppu_tb.
 [treeopen] ppu_tb.u_ppu.
+[treeopen] ppu_tb.u_ppu.u_render.
 [sst_width] 211
-[signals_width] 218
+[signals_width] 259
 [sst_expanded] 1
 [sst_vpaned_height] 288
+@24
+ppu_tb.u_ppu.u_render.y[8:0]
+ppu_tb.u_ppu.u_render.cycle[8:0]
+@c00200
+-clk_addr
 @28
 ppu_tb.u_ppu.clk
 ppu_tb.u_ppu.rst
 ppu_tb.frame_sync
 @22
 ppu_tb.u_ppu.ppuctrl[7:0]
-@25
-ppu_tb.u_ppu.u_render.cycle[8:0]
-@22
 ppu_tb.u_ppu.t[14:0]
 @c00022
 ppu_tb.u_ppu.v[14:0]
@@ -67,6 +70,7 @@ ppu_tb.u_ppu.ppu_addr_o[13:0]
 (13)ppu_tb.u_ppu.ppu_addr_o[13:0]
 @1401200
 -group_end
+-clk_addr
 @c00200
 -cpu_reg
 @28
@@ -125,6 +129,11 @@ ppu_tb.u_mmap.data_o[7:0]
 @1401200
 -group_end
 -mmap
+@c00200
+-render
+@24
+ppu_tb.u_ppu.u_render.y[8:0]
+ppu_tb.u_ppu.u_render.cycle[8:0]
 @c00022
 ppu_tb.u_ppu.ppu_data_i[7:0]
 @28
@@ -151,6 +160,7 @@ ppu_tb.u_ppu.u_render.y[8:0]
 @22
 ppu_tb.u_ppu.u_render.fine_y[2:0]
 ppu_tb.u_ppu.u_render.fine_x[2:0]
+ppu_tb.u_ppu.u_render.palette_idx[4:0]
 @c00022
 ppu_tb.u_ppu.u_render.pattern_idx[12:0]
 @28
@@ -185,6 +195,14 @@ ppu_tb.u_ppu.u_render.fetch_pat1
 ppu_tb.u_ppu.u_render.pat1[7:0]
 @28
 ppu_tb.u_ppu.u_render.load_sr
+ppu_tb.u_ppu.u_render.sp_pri
+ppu_tb.u_ppu.u_render.draw_sprite
+ppu_tb.u_ppu.u_render.sp_pal[1:0]
+ppu_tb.u_ppu.u_render.sp_px[1:0]
+@22
+ppu_tb.u_ppu.px_data[7:0]
+@1401200
+-render
 @c00200
 -render_shiftregs
 @28
@@ -252,9 +270,172 @@ ppu_tb.u_video.px_g[7:0]
 ppu_tb.u_video.px_b[7:0]
 @1401200
 -image
+@c00200
+-sprites
 @28
-ppu_tb.u_ppu.px_en
+ppu_tb.u_ppu.u_render.u_sprites.rst
+ppu_tb.u_ppu.u_render.u_sprites.rend
 @22
-ppu_tb.u_video.pixel[7:0]
+ppu_tb.u_ppu.u_render.u_sprites.scan_r[8:0]
+@28
+ppu_tb.u_ppu.u_render.u_sprites.state[1:0]
+@24
+ppu_tb.u_ppu.u_render.u_sprites.cycle[8:0]
+@22
+ppu_tb.u_ppu.u_render.u_sprites.cycle8[2:0]
+@28
+ppu_tb.u_ppu.u_render.u_sprites.cyc_even
+@22
+ppu_tb.u_ppu.u_render.u_sprites.ppuctrl[7:0]
+@28
+ppu_tb.u_ppu.u_render.u_sprites.clr_oam2
+ppu_tb.u_ppu.u_render.u_sprites.cpy_oam2
+ppu_tb.u_ppu.u_render.u_sprites.next_state[1:0]
+@c00200
+-oam
+@c00022
+ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+@28
+(0)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+(1)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+(2)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+(3)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+(4)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+(5)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+(6)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+(7)ppu_tb.u_ppu.u_render.u_sprites.oam_addr[7:0]
+@1401200
+-group_end
+@c00022
+ppu_tb.u_ppu.u_render.u_sprites.n[5:0]
+@28
+(0)ppu_tb.u_ppu.u_render.u_sprites.n[5:0]
+(1)ppu_tb.u_ppu.u_render.u_sprites.n[5:0]
+(2)ppu_tb.u_ppu.u_render.u_sprites.n[5:0]
+(3)ppu_tb.u_ppu.u_render.u_sprites.n[5:0]
+(4)ppu_tb.u_ppu.u_render.u_sprites.n[5:0]
+(5)ppu_tb.u_ppu.u_render.u_sprites.n[5:0]
+@1401200
+-group_end
+@28
+ppu_tb.u_ppu.u_render.u_sprites.m[1:0]
+@22
+ppu_tb.u_ppu.u_render.u_sprites.oam_addr_i[7:0]
+@28
+ppu_tb.u_ppu.u_render.u_sprites.oam_addr_wr
+@22
+ppu_tb.u_ppu.u_render.u_sprites.oam_din[7:0]
+ppu_tb.u_ppu.u_render.u_sprites.oam_dout[7:0]
+@28
+ppu_tb.u_ppu.u_render.u_sprites.oam_inc
+ppu_tb.u_ppu.u_render.u_sprites.oam_next
+ppu_tb.u_ppu.u_render.u_sprites.oam_rst
+ppu_tb.u_ppu.u_render.u_sprites.oam_wr
+@1401200
+-oam
+@800200
+-oam2
+@22
+ppu_tb.u_ppu.u_render.u_sprites.oam2_addr[4:0]
+@24
+ppu_tb.u_ppu.u_render.u_sprites.n2[2:0]
+ppu_tb.u_ppu.u_render.u_sprites.m2[1:0]
+@22
+ppu_tb.u_ppu.u_render.u_sprites.oam2_din[7:0]
+ppu_tb.u_ppu.u_render.u_sprites.oam2_dout[7:0]
+@28
+ppu_tb.u_ppu.u_render.u_sprites.oam2_inc
+ppu_tb.u_ppu.u_render.u_sprites.oam2_rst
+ppu_tb.u_ppu.u_render.u_sprites.oam2_wr
+@1000200
+-oam2
+@28
+ppu_tb.u_ppu.u_render.u_sprites.ysrc
+@c00420
+ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+@28
+(0)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(1)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(2)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(3)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(4)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(5)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(6)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(7)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+(8)ppu_tb.u_ppu.u_render.u_sprites.sp_yi[8:0]
+@1401200
+-group_end
+@28
+ppu_tb.u_ppu.u_render.u_sprites.sp_inscan
+ppu_tb.u_ppu.u_render.u_sprites.set_full
+ppu_tb.u_ppu.u_render.u_sprites.full
+ppu_tb.u_ppu.u_render.u_sprites.set_of
+ppu_tb.u_ppu.u_render.u_sprites.overflow
+ppu_tb.u_ppu.u_render.u_sprites.set_sp0
+ppu_tb.u_ppu.u_render.u_sprites.sp0_hit
+ppu_tb.u_ppu.u_render.u_sprites.sp0
+ppu_tb.u_ppu.u_render.u_sprites.save_y
+ppu_tb.u_ppu.u_render.u_sprites.save_nt
+ppu_tb.u_ppu.u_render.u_sprites.save_at
+ppu_tb.u_ppu.u_render.u_sprites.save_x
+@22
+ppu_tb.u_ppu.u_render.u_sprites.y[7:0]
+ppu_tb.u_ppu.u_render.u_sprites.attribute[7:0]
+ppu_tb.u_ppu.u_render.u_sprites.nt[7:0]
+ppu_tb.u_ppu.u_render.u_sprites.x[7:0]
+@28
+ppu_tb.u_ppu.u_render.u_sprites.flip_y
+ppu_tb.u_ppu.u_render.u_sprites.pat_bitsel
+@22
+ppu_tb.u_ppu.u_render.u_sprites.pattern_idx[12:0]
+@1401200
+-sprites
+@c00201
+-sprite_render
+@28
+ppu_tb.u_ppu.u_render.sp0_en
+ppu_tb.u_ppu.u_render.sp1_en
+ppu_tb.u_ppu.u_render.sp0
+@22
+ppu_tb.u_ppu.u_render.sp0_at[7:0]
+@28
+ppu_tb.u_ppu.u_render.sp0_px[1:0]
+@c00022
+ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+@28
+(0)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+(1)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+(2)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+(3)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+(4)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+(5)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+(6)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+(7)ppu_tb.u_ppu.u_render.sp0_sr0[7:0]
+@1401200
+-group_end
+@22
+ppu_tb.u_ppu.u_render.sp0_sr1[7:0]
+ppu_tb.u_ppu.u_render.sp0_x[7:0]
+ppu_tb.u_ppu.u_render.sp1_at[7:0]
+@28
+ppu_tb.u_ppu.u_render.sp1_px[1:0]
+@22
+ppu_tb.u_ppu.u_render.sp1_sr0[7:0]
+ppu_tb.u_ppu.u_render.sp1_sr1[7:0]
+ppu_tb.u_ppu.u_render.sp1_x[7:0]
+ppu_tb.u_ppu.u_render.sp_attribute[7:0]
+@28
+ppu_tb.u_ppu.u_render.sp_eval
+ppu_tb.u_ppu.u_render.sp_flip_x
+ppu_tb.u_ppu.u_render.sp_pal[1:0]
+@22
+ppu_tb.u_ppu.u_render.sp_pattern_idx[12:0]
+@28
+ppu_tb.u_ppu.u_render.sp_pri
+ppu_tb.u_ppu.u_render.sp_px[1:0]
+@22
+ppu_tb.u_ppu.u_render.sp_x[7:0]
+@1401201
+-sprite_render
 [pattern_trace] 1
 [pattern_trace] 0

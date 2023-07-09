@@ -26,8 +26,9 @@ sim/ppu.$(SIMEXT): $(PPUTESTBENCH) $(HDLSOURCES)
 	iverilog -g2012 -o $@ \
 					-s ppu_tb \
 					-D'DUMP_WAVE_FILE="$(patsubst %.vvp,%.vcd,$@)"' \
-					-I $(HDLDIR) $(HDLSOURCES) $(PPUTESTBENCH)
-
+					-I $(HDLDIR) $(HDLSOURCES) $(PPUTESTBENCH) \
+					-Wall -Wno-timescale
+					
 # run verilog sim
 sim/%.$(WAVEEXT): sim/%.$(SIMEXT)
 	vvp $^

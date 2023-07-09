@@ -1,3 +1,4 @@
+
 module ppu
     (
     input logic clk, rst,
@@ -20,7 +21,7 @@ module ppu
     logic reg_re, reg_we, cs_r;
 
     // cs re detection
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
         if (rst) begin
             cs_r <= 0;
         end else begin
@@ -33,7 +34,7 @@ module ppu
     // cpu/ppu read / write registers
     logic cpu_ppu_read;
     logic [7:0] cpu_data_io, cpu_readbuf;
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
         if (rst) begin
             ppu_data_o <= 0;
             cpu_readbuf <= 0;
@@ -75,7 +76,7 @@ module ppu
     wire status_clr;                //signal to clear status regs
 
     assign ppu_rd = ~ppu_wr;
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
         if (rst) begin
             ppuctrl <= 0;
             ppumask <= 0;
@@ -144,7 +145,7 @@ module ppu
                     // OAMADDR_ADDR:   oamaddr <= cpu_data_i;
                     // OAMDATA_ADDR:   oamdata <= cpu_data_i;
                     PPUSCROLL_ADDR: begin
-                                    if (w) begin
+                                    if (~w) begin
                                         t[4:0] <= cpu_data_i[7:3];  // coarse x
                                         fine_x <= cpu_data_i[2:0];       // fine x
                                     end else begin
@@ -154,7 +155,7 @@ module ppu
                                     w = ~w;
                                     end
                     PPUADDR_ADDR:   if (!rst_delay) begin
-                                    if (w) begin
+                                    if (~w) begin
                                         // high addr
                                         t[14:8] <= {1'b0, cpu_data_i[5:0]};
                                     end else begin
@@ -223,6 +224,21 @@ module ppu
     end
 
 
+    // address is generally taken from v unless fetch_attr or fetch_chr set
+    logic [13:0] addr, attr_addr, chr_addr;
+    assign chr_addr = {1'b0, pattern_idx};
+    assign attr_addr = {2'h2, v[11:10], 4'b1111, v[9:7], v[4:2]};
+    assign ppu_addr_o = fetch_attr ? attr_addr :
+                        fetch_chr ? chr_addr :
+                        {2'h2, v[11:0]};
+
+    wire lower_tile = v[6];
+    wire left_tile = v[1];
+    wire [1:0] attr_decode = lower_tile ? left_tile ? ppu_data_i[7:6] : ppu_data_i[5:4]: //lower left / right tile
+                                          left_tile ? ppu_data_i[3:2] : ppu_data_i[1:0]; //upper left / right tile
+
+
+
     render u_render(
         .clk         (clk         ),
         .rst         (rst         ),
@@ -244,29 +260,6 @@ module ppu
         .inc_y      (inc_y      ),
         .return00 (return00)
     );
-
-
-    // address is generally taken from v unless fetch_attr or fetch_chr set
-    logic [13:0] addr, attr_addr, chr_addr;
-    assign chr_addr = {1'b0, pattern_idx};
-    assign attr_addr = {2'h2, v[11:10], 4'b1111, v[9:7], v[4:2]};
-    assign ppu_addr_o = fetch_attr ? attr_addr :
-                        fetch_chr ? chr_addr :
-                        {2'h2, v[11:0]};
-
-    // wire lower_tile = v[6];
-    // wire left_tile = v[1];
-    // wire [1:0] attr_decode = lower_tile ? left_tile ? ppu_data_i[7:6] : ppu_data_i[5:4]: //lower left / right tile
-    //                                       left_tile ? ppu_data_i[3:2] : ppu_data_i[1:0]; //upper left / right tile
-
-
-    logic [1:0] attr_decode;
-    always @(*) begin
-        if (v[6]) // lower
-            attr_decode = v[1] ? ppu_data_i[7:6] : ppu_data_i[5:4]; //lower left / right tile
-        else      // upper
-            attr_decode = v[1] ? ppu_data_i[3:2] : ppu_data_i[1:0]; //upper left / right tile
-    end
 
 
     // palette memory

@@ -1,97 +1,113 @@
 
-module sprites(
-    input logic clk, rst, ena,
-    input logic [14:0] addr,
-    input logic load_sprites,
-    input logic rw,
-    input logic tall,
-    input logic [7:0] data_i,
-    output logic [7:0] data_o,
-
+module sprites #(
+        parameter OAM_INIT="rom/smb_oam.rom"
+    )(
+    input logic clk, rst, rend,
+    input logic [8:0] cycle,
+    input logic [8:0] scan,
+    input logic [7:0] oam_addr_i,
+    input logic oam_addr_wr,
+    input logic [7:0] oam_din,
+    input logic oam_wr,
+    input logic [7:0] ppuctrl,
+    output logic [7:0] oam_dout,
     output logic [12:0] pattern_idx,
-    output logic [1:0] palette_idx,
-    output logic pri, flip_x, flip_y, sp0,
+    output logic [7:0] attribute,
+    output logic sp0,
     output logic [7:0] x
     );
 
     logic [7:0] OAM  [255:0];
     logic [7:0] OAM2 [31:0];             //secondary OAM
 
-    logic [8:0] oam_addr;
-    logic[7:0] oam_dout;
-    logic[7:0] oam_din;
-    logic oam_we;
+    logic [7:0] oam_addr;
     logic [4:0] oam2_addr;
     logic[7:0] oam2_dout;
     logic[7:0] oam2_din;
-    logic oam2_we;
+    logic oam2_wr;
 
+    wire [5:0] n = oam_addr[7:2];
+    wire [1:0] m = oam_addr[1:0];
+    wire [2:0] n2 = oam2_addr[4:2];
+    wire [1:0] m2 = oam2_addr[1:0];
 
     logic [1:0] state, next_state;
+    logic [8:0] scan_r;
 
-    logic overflow, full, set_sp0;
-
-    // set later
-    assign oam_din = 8'h0;
-    assign oam_we = 0;
+    logic reg_scan;
+    logic oam2_rst;
+    logic oam2_inc;
+    logic oam_rst;
+    logic oam_inc;
+    logic oam_next;
+    logic cpy_oam2;
+    logic clr_oam2;
+    logic overflow, full, set_of, set_full;
+    logic set_sp0, sp0_hit;
+    logic save_y, save_nt, save_at, save_x;
 
     logic cyc_even;
     assign cyc_even = ~cycle[0];
 
-    logic cpy_oam2, clr_oam2;
+    logic [7:0] y, nt;
+    wire flip_y = attribute[7];
 
-    logic [7:0] y, nt, at;
-    assign palette_idx = at[1:0];
-    assign pri = at[5];
-    assign flip_x = at[6];
-    assign flip_y = at[7];
+    logic ysrc;
+    //y index into sprite pattern
+    wire [8:0] sp_yi = scan_r - (ysrc ? oam_dout : y);    // on copy use y coord from oam, otherwise use registered y coord
+    wire sp_inscan = ~(ppuctrl[PPUCTRL_H] ? |sp_yi[8:4] : |sp_yi[8:3]); //is this sprite in the current scan line?
 
-    logic [7:0] sp_yi;      //y index into sprite pattern
-    assign sp_yi = y[7:0] - oam_dat;
-    logic sp_inscan;     //is this sprite in the current scan line?
-    assign sp_inscan = ~(ppuctrl[PPUCTRL_H] ? |sp_yi[7:4] : |sp_yi[7:3]);
+    // flip sprite y pattern index if needed
+    wire [3:0] sp_yiflip = ~flip_y ? sp_yi[3:0] : 
+                            ppuctrl[PPUCTRL_H] ? 4'hf - sp_yi[3:0] : 4'h7 - sp_yi[3:0];
 
     logic pat_bitsel;
     assign pat_bitsel = cycle[1]; //fetch pattern bit 0 on cycle 4 (mod8), and pattern bit 1 on cycle 6 (mod8)
-    assign pattern_idx = ppuctrl[PPUCTRL_H] ? {nt[0], nt[7:1], sp_yi[3], pat_bitsel, sp_yi[2:0]} //16 px sprites
-                                            : {ppuctrl[PPUCTRL_S], nt, pat_bitsel, sp_yi[2:0]};   //8px sprites
+    assign pattern_idx = ppuctrl[PPUCTRL_H] ? {nt[0], nt[7:1], sp_yiflip[3], pat_bitsel, sp_yiflip[2:0]} //16 px sprites
+                                            : {ppuctrl[PPUCTRL_S], nt, pat_bitsel, sp_yiflip[2:0]};   //8px sprites
 
 
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
         if (rst) begin
-
-            y <= 0;
+            state <= OAM_IDLE;
+            oam_addr <= 0;
+            oam2_addr <= 0;
+            full <= 0;
+            overflow <= 0;
+            sp0_hit <= 0;
+            y <= 8'd240;
             nt <= 0;
-            at <= 0;
+            attribute <= 0;
             x <= 0;
-
-            sp_valid <= 0;
+            scan_r <= 0;
         end else begin
 
+            scan_r <= reg_scan ? scan : scan_r;
             state <= next_state;
 
-            oam_addr <= oam_next ? oam_addr + 4 :     // n++, m=0
+            oam_addr <= oam_rst ? 0:
+                        oam_addr_wr ? oam_addr_i:
+                        oam_next ? oam_addr + 4 :     // n++, m=0
                         oam_inc ? oam_addr + 1 :        // m++
-                        oam_rst ? 0:
                         oam_addr;
 
-            oam2_addr <= oam2_next ? oam2_addr + 4 :   //n++, m=0
-                        oam2_inc ? oam2_addr + 1 :     //m++
-                        oam2_rst ? 0:
+            oam2_addr <=oam2_rst ? 0:
+                        oam2_inc ? oam2_addr + 1 :
                         oam2_addr;
 
             full <= clr_oam2 ? 0 : full || set_full;
             overflow <= clr_oam2 ? 0 : overflow || set_of;
             sp0_hit <= clr_oam2 ? 0 : set_sp0 | sp0_hit;
 
-            y <= sp_rst ? 0 : save_y ? oam2_dat : y;
-            nt <= sp_rst ? 0 : save_nt ? oam2_dat : nt;
-            at <= sp_rst ? 0 : save_at ? oam2_dat : at;
-            x <= sp_rst ? 0 : save_x ? oam2_dat : x;
+            y <= save_y ? oam2_dout : y;
+            nt <= save_nt ? oam2_dout : nt;
+            attribute <= save_at ? oam2_dout : attribute;
+            x <= save_x ? oam2_dout : x;
 
         end
     end
 
+    wire [2:0] cycle8 = cycle[2:0];
     always_comb begin
         oam2_rst = 0;
         oam2_inc = 0;
@@ -103,45 +119,57 @@ module sprites(
 
         set_of = 0;
         set_full = 0;
-        clr_of = 0;
-        clr_full = 0;
         save_y = 0;
         save_nt= 0;
         save_at= 0;
         save_x = 0;
         set_sp0 = 0;
-        
-        case(cycle)
-            0:          begin
-                        oam2_rst = 1;
-                        clr_of = 1;
-                        clr_full = 1;
-                        next_state = CLR_OAM2;
-                        end
-            64:         begin
-                        oam2_rst = 1;
-                        next_state = UPDATE_OAM2;
-                        end
-            256:        next_state = SP_FETCH;
-            default:    next_state = state;
-        endcase
+        sp0 = 0;
+
+        ysrc = 0;
+
+        next_state = state;
+        reg_scan = 0;
+
+        if (rend) begin
+            case(cycle)
+                9'd0:          begin
+                            oam2_rst = 1;
+                            reg_scan = 1;
+                            next_state = OAM_CLEAR;
+                            end
+                9'd64:         begin
+                            oam2_rst = 1;
+                            next_state = OAM_UPDATE;
+                            end
+                9'd256:        begin
+                            oam2_rst = 1;
+                            next_state = OAM_FETCH;
+                            end
+                default:    next_state = state;
+            endcase
+        end else begin
+            next_state = OAM_IDLE;
+        end
 
 
         case(state)
-            CLR_OAM2: begin
+            OAM_CLEAR: begin
                 // clear next oam2 address every even cycle
                 clr_oam2 = 1;
                 oam2_inc = cyc_even;
             end
-            UPDATE_OAM2: begin
+            OAM_UPDATE: begin
                 cpy_oam2 = 1;
+                ysrc = 1; // get y coord from oam, not oam2
                 // copy valid sprites from oam->oam2
                 if (cyc_even) begin
-                    if (oam2_addr[0:2]==0 && ~sp_inscan) begin                        
+                    if (m2==0 && ~sp_inscan) begin                        
                         // y coord fetch, check if sprite is on this scanline
                         //if not, skip oam to next and hold oam2
                         oam_next = 1;
                         oam2_inc = 0;
+
                     end else begin
                         //mark a hit on sprite 0
                         set_sp0 = oam_addr==0;
@@ -157,42 +185,54 @@ module sprites(
                         // this will disable further writes
                         set_full = &oam2_addr;
                     end
+                    if (&n && (oam_next || (oam_inc && &m))) next_state = OAM_IDLE;
                 end
             end
-            SP_FETCH: begin
+            OAM_FETCH: begin
                 oam_rst = 1;            // keep oam_addr = 0
                 oam2_inc = 1;           // walk through oam2, unless cancelled below
-                sp0 = sp0_hit && (oam2_addr[4:2]==0); // if this is sprite 0, emit signal
-                case(cycle[2:0])
-                    1:  save_y = 1;
-                    2:  save_nt = 1;
-                    3:  save_at = 1;
-                    4:  begin save_x = 1; oam2_inc=0; end
-                    6:  begin oam2_inc=0; end
+                sp0 = sp0_hit && (n2==0); // if this is sprite 0, emit signal
+                case(cycle8)
+                    3'h0:  begin end //fetch y
+                    3'h1:  save_y = 1;
+                    3'h2:  save_nt = 1;
+                    3'h3:  save_at = 1;
+                    3'h4:  begin save_x = 1; oam2_inc=0; end
                     default: oam2_inc=0; // hold oam2 on other cycles
                 endcase
 
-                next_state = state;
             end
-            default: begin end //IDLE
+            default: begin oam2_inc = 1; end //IDLE
         endcase
     end
 
-
     // OAM memory
-    always_ff @(posedge clk) begin
-        if (oam_we) OAM[oam_addr] <= oam_din;
-        oam_dout <= OAM[oam_addr];
+    always @(posedge clk) begin
+        if (oam_wr) OAM[oam_addr] <= oam_din;
     end
+    assign oam_dout = OAM[oam_addr];
 
     // OAM2 memory
     assign oam2_din = clr_oam2 ? 8'hff : oam_dout;
-    assign oam2_we = update_oam2 && cyc_even && ~full;
-    always_ff @(posedge clk) begin
-        if (oam2_we) OAM2[oam2_addr] <= oam2_din;
-        oam2_dat <= OAM2[oam2_addr];
+    assign oam2_wr = (cpy_oam2 || clr_oam2) && cyc_even && ~full;
+    always @(posedge clk) begin
+        if (oam2_wr) OAM2[oam2_addr] <= oam2_din;
     end
+    assign oam2_dout = OAM2[oam2_addr];
     
+    integer file, cnt;
+    initial begin
+        if (OAM_INIT != "") begin
+            file=$fopen(OAM_INIT,"rb");
+            cnt = $fread(OAM, file, 0, 256);
+            $display("Loaded %d bytes of CHR mem", cnt);
+            $fclose(file);
+        end
 
+        // initialize OAM2?
+        // for(cnt = 0; cnt < 64; cnt = cnt+1) 
+        //     OAM2[cnt] = 8'hff;
+
+    end
 
 endmodule

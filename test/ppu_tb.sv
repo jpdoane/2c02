@@ -1,11 +1,8 @@
-`timescale 1us/1us
-
+`timescale 1us/1ns
 
 module ppu_tb ();
 
     logic clk, rst;
-
-
 
     logic cpu_rw=1;
     logic cpu_cs=0;
@@ -22,6 +19,7 @@ module ppu_tb ();
     logic [7:0] px_data;
     logic ppu_rw;
 
+    logic [7:0] xscroll, yscroll;
     initial begin
         clk = 0;
         rst = 1;
@@ -34,7 +32,27 @@ module ppu_tb ();
         cpu_ppu_data=8'h1 << PPUCTRL_B; // upper nt
         cpu_rw = 0;
         cpu_cs = 1;
-        #6
+        #3
+        cpu_cs = 0;
+        // write ppuscroll (x)
+        xscroll = 8'd0;
+        yscroll = 8'd0;
+        #3
+        cpu_addr=3'h5;
+        cpu_ppu_data=xscroll;
+        cpu_rw = 0;
+        cpu_cs = 1;
+        // write ppuscroll (y)
+        #3
+        cpu_cs = 0;
+        #3
+        cpu_addr=3'h5;
+        cpu_ppu_data=yscroll;
+        cpu_rw = 0;
+        cpu_cs = 1;
+        #3
+        cpu_cs = 0;
+        #3
         cpu_rw = 1;
         cpu_cs = 0;
 
@@ -99,7 +117,8 @@ module ppu_tb ();
 
     // limit max sim duration
     initial begin
-        #200000
+        // #700 // around a scanline
+        #200000 // around a frame
         $display( "stopping...");
         $finish;
     end

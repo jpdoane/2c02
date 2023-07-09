@@ -1,3 +1,4 @@
+
 module video #(
     parameter PALFILE="rom/nes.pal",
     parameter IMAGE_W=256,

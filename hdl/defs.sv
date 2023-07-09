@@ -1,3 +1,4 @@
+
 parameter PPUCTRL_ADDR   =3'h0;
 parameter PPUMASK_ADDR   =3'h1;
 parameter PPUSTATUS_ADDR =3'h2;
@@ -33,3 +34,7 @@ parameter Y_PRERENDER = 9'd261;
 parameter Y_POSTRENDER = SCREEN_HEIGHT;
 parameter Y_BLANK = Y_POSTRENDER+1;
 
+parameter OAM_IDLE = 2'h0;
+parameter OAM_CLEAR = 2'h1;
+parameter OAM_UPDATE = 2'h2;
+parameter OAM_FETCH = 2'h3;

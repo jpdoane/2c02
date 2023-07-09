@@ -1,3 +1,4 @@
+
 module palette #(
         parameter PAL_INIT="rom/smb_pal.rom"
     )(
@@ -28,7 +29,7 @@ module palette #(
     logic [4:0] addr_m;
     assign addr_m = {addr[4] & |addr[1:0], addr[3:0]};
 
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
         if (wr) PAL[addr_m] <= data_i;
         data_o <= PAL[addr_m];
     end

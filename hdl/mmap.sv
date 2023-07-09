@@ -1,3 +1,4 @@
+
 module mmap #(
         parameter MIRRORV=1,
         parameter CHR_INIT="rom/smb_chr.rom",
@@ -59,14 +60,14 @@ module mmap #(
     // Other: Some advanced mappers can present arbitrary combinations of CIRAM, VRAM, or even CHR ROM in the nametable area. Such exotic setups are rarely used.
 
     //CHR
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
         c_data <= CHR[chr_addr];
         if (cs && ~rw) CHR[chr_addr] <= data_i;
         cs_r <= cs;
     end
 
     //VRAM
-    always_ff @(posedge clk) begin
+    always @(posedge clk) begin
         v_data <= VRAM[vram_addr];
         if (~cs && ~rw) VRAM[vram_addr] <= data_i;
     end

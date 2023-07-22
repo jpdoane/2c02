@@ -6,9 +6,12 @@ all: synth
 synth: synth/Makefile
 	make -C synth/
 
+.PHONY: synth
+bitfile: synth/Makefile
+	make -C synth/ bitstream
+
 synth/Makefile:
-	cd synth && hdlmake -a && \
-	echo '.PHONY: \044(VERILOG_OBJ)' >> Makefile 
+	cd synth && hdlmake -a
 
 .PHONY: clean
 clean:

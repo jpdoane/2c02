@@ -52,8 +52,8 @@ module hdmi_upscale_tb #(
         #PPU_CLK_HALFPERIOD
         #PPU_CLK_HALFPERIOD
         #PPU_CLK_HALFPERIOD
-        rst_p = 1;
-        rst_h = 1;
+        rst_p = 0;
+        rst_h = 0;
 
         #SIM_LENGTH;
         $finish;

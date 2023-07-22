@@ -86,12 +86,7 @@ module ppu_tb ();
 
     assign ppu_rw = !ppu_wr;
 
-    mmap 
-    #(
-        .CHR_INIT  ("rom/smb_chr.rom"  ),
-        .VRAM_INIT ("rom/smb_nt.rom" )
-    )
-    u_mmap(
+    mmap u_mmap(
         .clk    (clk    ),
         .rst    (rst    ),
         .addr   (ppu_addr   ),
@@ -111,7 +106,7 @@ module ppu_tb ();
 
 
     initial begin
-        $dumpfile(`DUMP_WAVE_FILE);
+        // $dumpfile(`DUMP_WAVE_FILE);
         $dumpvars(0, ppu_tb);
     end
 

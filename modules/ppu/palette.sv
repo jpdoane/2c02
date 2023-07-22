@@ -1,6 +1,6 @@
 
 module palette #(
-        parameter PAL_INIT="rom/smb_pal.rom"
+        parameter PAL_INIT={`ROM_PATH,"pal.rom"}
     )(
     input logic clk, rst,
     input logic [4:0] addr,
@@ -14,9 +14,9 @@ module palette #(
     integer file, cnt;
     initial begin
         if (PAL_INIT != "") begin
+            $display("Loading pallete memory: %s ", PAL_INIT);
             file=$fopen(PAL_INIT,"rb");
             cnt = $fread(PAL, file, 0, 32);
-            $display("Loaded %d bytes of PAL mem", cnt);
             // cnt=0;
             // while (cnt<32) cnt = cnt + $fread(PAL[cnt], file);
             $fclose(file);

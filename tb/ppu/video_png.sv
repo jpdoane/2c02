@@ -1,6 +1,5 @@
 
 module video #(
-    parameter PALFILE="rom/nes.pal",
     parameter IMAGE_W=256,
     parameter IMAGE_H=240,
     parameter MAX_FRAMES=1
@@ -18,7 +17,7 @@ module video #(
     string filename;
     initial begin
         frame_cnt = 0;
-        file=$fopen(PALFILE,"rb");
+        file=$fopen(`PALFILE,"rb");
         cnt = $fread(pal,file);
         $fclose(file);
         file=0;

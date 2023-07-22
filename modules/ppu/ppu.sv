@@ -49,8 +49,8 @@ module ppu
     logic fetch_attr, fetch_chr;
     logic [12:0] pattern_idx;
     logic [4:0] palette_idx;
-    logic rend, vblank, inc_cx, inc_y, return00;
-
+    logic rend, vblank, vblank_clr, inc_cx, inc_y, return00;
+    logic sp0, sp_of;
 
     // v/t: registers
     // yyy NN YYYYY XXXXX
@@ -71,9 +71,6 @@ module ppu
 
     logic rst_delay;
 
-    reg sphit, spof;        //status registers: vblank, sprite hit, sprite overflow;
-    wire vblank_s, sphit_s, spof_s; //signals to set reg (from render)
-    wire status_clr;                //signal to clear status regs
 
     assign ppu_rd = ~ppu_wr;
     always @(posedge clk) begin
@@ -96,6 +93,7 @@ module ppu
             inc_v<=0;
             ppu_wr <= 0;
             cpu_ppu_read <= 0;
+            vblank_clr <= 0;
         end else begin
             ppuctrl <= ppuctrl;
             ppumask <= ppumask;
@@ -107,14 +105,7 @@ module ppu
             t <= t;
             fine_x<= fine_x;
             inc_v <= 0;
-
-            if (status_clr) begin
-                sphit <= 0;
-                spof <= 0;
-                rst_delay <= 0;
-            end
-            sphit <= sphit_s | sphit;
-            spof <= spof_s | spof;
+            vblank_clr <= vblank_clr && vblank;
 
             cpu_data_io <= cpu_data_io;       // output data will be maintained, emulating ppu i/o latch
                                             // input data is also copied to data_o on writes
@@ -123,8 +114,9 @@ module ppu
             if(reg_re) begin    // cpu read (ppu write back to cpu)
                 case(cpu_addr)
                     PPUSTATUS_ADDR: begin
-                                    cpu_data_io[7:5] <= {vblank, sphit, spof}; //bits 4:0 maintain latched data
-                                    w <= 0;                 // reset write toggle
+                                    cpu_data_io[7:5] <= {vblank && ~vblank_clr, sp0, sp_of}; //bits 4:0 maintain latched data
+                                    vblank_clr <= 1;            // clear vblank after read
+                                    w <= 0;                     // reset write toggle
                                     end
                     // OAMDATA_ADDR:   cpu_data_io <= oamdata;
                     PPUDATA_ADDR:   begin
@@ -258,6 +250,8 @@ module ppu
         .vblank      (vblank      ),
         .inc_cx      (inc_cx      ),
         .inc_y      (inc_y      ),
+        .sp0        (sp0),
+        .sp_of      (sp_of),
         .return00 (return00)
     );
 
@@ -270,11 +264,7 @@ module ppu
     assign vpal = (v[13:8] == 6'h3f);
     assign pal_addr = vpal ? v[4:0] : palette_idx;
     
-    palette 
-    #(
-        .PAL_INIT ("rom/smb_pal.rom")
-    )
-    u_palette(
+    palette  u_palette(
         .clk    (clk    ),
         .rst    (rst    ),
         .addr   (pal_addr   ),

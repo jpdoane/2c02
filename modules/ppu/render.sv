@@ -15,7 +15,7 @@ module render
     output logic [12:0] pattern_idx,
     output logic [4:0] palette_idx,
 
-    output logic px_en, rend, vblank, inc_cx, inc_y,
+    output logic px_en, rend, vblank, inc_cx, inc_y, sp0, sp_of,
     output logic return00
     );
 
@@ -36,7 +36,7 @@ module render
     assign fetch_chr = fetch_pat0 | fetch_pat1;
 
     logic sp_eval, load_sp_sr;
-
+    logic sp0_line, sp0_opaque;
 
     logic [7:0] oam_addr_i;
     logic oam_addr_wr;
@@ -46,7 +46,6 @@ module render
     logic [12:0] sp_pattern_idx;
     logic [1:0] sp_palette_idx;
     logic [7:0] sp_attribute;
-    logic sp0;
     logic [7:0] sp_x;
     
     assign oam_addr_i=0;
@@ -79,7 +78,7 @@ module render
             inc_cx <= 0;
             inc_y <= 0;
             load_sp_sr <= 0;
-
+            sp0 <= 0;
         end
         else begin
 
@@ -91,9 +90,22 @@ module render
             sp_eval <= sp_eval;
 
             vblank <= vblank;
-            postrender <= postrender;
-            prerender <= prerender;
+            prerender<=0;
+            postrender<=0; 
             return00 <= 0;
+
+            // these flags take effect on cycle 1 (after first cycle of new y)
+            case(y)
+                Y_PRERENDER:    begin
+                                vblank <= 0;
+                                prerender <= 1;
+                                sp0 <= 0;
+                                end
+                Y_POSTRENDER:   postrender <= 1;
+                Y_BLANK:        vblank <= 1;
+            endcase
+
+            sp0 <= (sp0_opaque && bg_opaque) || sp0;
 
             px_en <= px_en;
             y <= y;
@@ -105,23 +117,14 @@ module render
             return00 <= prerender && return00;
             case(cycle)
                 0:              begin sr_en <=1; px_en <= vis_line; end
-                SCREEN_WIDTH:   begin px_en <= 0; inc_y <= 1; y<=ynext; sp_eval <= rend; end
+                SCREEN_WIDTH:   begin px_en <= 0; inc_y <= 1; sp_eval <= rend; end
                 CYCLE_RESETON:  begin return00 <= prerender; end
                 CYCLE_RESETOFF: return00 <= 0;
                 CYCLE_SPDONE:   begin sp_eval <= 0; load_sp_sr <= vis_line; end
                 CYCLE_BADFETCH: sr_en <= 0;
-                CYCLE_LAST:     begin sr_en <=1; cycle <= 0; prerender<=0; postrender<=0; end
+                CYCLE_LAST:     begin sr_en <=1; cycle <= 0; y<=ynext; end
             endcase
             
-            // these flags take effect on cycle 1 (after first cycle of new y)
-            case(y)
-                Y_PRERENDER:    begin
-                                vblank <= 0;
-                                prerender <= 1;
-                                end
-                Y_POSTRENDER:   postrender <= 1;
-                Y_BLANK:        vblank <= 1;
-            endcase
 
         end
     end
@@ -219,8 +222,9 @@ module render
         .ppuctrl     (ppuctrl     ),
         .oam_dout    (oam_dout    ),
         .pattern_idx (sp_pattern_idx ),
-        .attribute   (sp_attribute ),
-        .sp0         (sp0         ),
+        .attribute   (sp_attribute   ),
+        .overflow    (sp_of    ),
+        .sp0         (sp0_line     ),
         .x           (sp_x           )
     );
 
@@ -253,6 +257,7 @@ module render
     always @(*) begin
         sp_px = 4'h0;
         sp_pri = 1;
+        sp0_opaque = 0;
         if (|sp[7].px[1:0]) begin sp_px = sp[7].px; sp_pri = sp[7].pri; end
         if (|sp[6].px[1:0]) begin sp_px = sp[6].px; sp_pri = sp[6].pri; end
         if (|sp[5].px[1:0]) begin sp_px = sp[5].px; sp_pri = sp[5].pri; end
@@ -260,17 +265,16 @@ module render
         if (|sp[3].px[1:0]) begin sp_px = sp[3].px; sp_pri = sp[3].pri; end
         if (|sp[2].px[1:0]) begin sp_px = sp[2].px; sp_pri = sp[2].pri; end
         if (|sp[1].px[1:0]) begin sp_px = sp[1].px; sp_pri = sp[1].pri; end
-        if (|sp[0].px[1:0]) begin sp_px = sp[0].px; sp_pri = sp[0].pri; end
-        
+        if (|sp[0].px[1:0]) begin sp_px = sp[0].px; sp_pri = sp[0].pri; sp0_opaque = sp0_line; end
     end
 
     // final pixel mux
     // draw sprite if it has priority or bg is transparent
     // else draw opaque bg, or zero for transparent bg
-    wire bg_trans = ~|bg_px;
-    wire sp_trans = ~|sp_px[1:0];
-    wire draw_sprite = ~sp_trans && (~sp_pri || bg_trans);
-    assign palette_idx = draw_sprite ? {1'b1, sp_px} : {1'b0, bg_pal & {2{~bg_trans}}, bg_px};   
+    wire bg_opaque = |bg_px;
+    wire sp_opaque = |sp_px[1:0];
+    wire draw_sprite = sp_opaque && (~sp_pri || bg_opaque);
+    assign palette_idx = draw_sprite ? {1'b1, sp_px} : {1'b0, bg_pal & {2{bg_opaque}}, bg_px};   
 
     // final pixel color: PAL[palette_idx] (done elsewhere)
 

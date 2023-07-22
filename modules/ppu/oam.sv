@@ -1,6 +1,6 @@
 
 module oam #(
-        parameter OAM_INIT="rom/smb_oam.rom"
+        parameter OAM_INIT={`ROM_PATH,"oam.rom"}
     )(
     input logic clk, rst, rend,
     input logic [8:0] cycle,
@@ -13,10 +13,11 @@ module oam #(
     output logic [7:0] oam_dout,
     output logic [12:0] pattern_idx,
     output logic [7:0] attribute,
-    output logic sp0,
-    output logic [7:0] x
+    output logic overflow, sp0,                  // OAM2[0] is sprite 0
+    output logic [7:0] x 
     );
 
+    initial $display("%s", OAM_INIT);
     logic [7:0] OAM  [255:0];
     logic [7:0] OAM2 [31:0];             //secondary OAM
 
@@ -34,7 +35,7 @@ module oam #(
     logic [1:0] state, next_state;
     logic [8:0] scan_r;
 
-    logic reg_scan;
+    logic new_scan;
     logic oam2_rst;
     logic oam2_inc;
     logic oam_rst;
@@ -42,8 +43,8 @@ module oam #(
     logic oam_next;
     logic cpy_oam2;
     logic clr_oam2;
-    logic overflow, full, set_of, set_full;
-    logic set_sp0, sp0_hit;
+    logic full, set_of, set_full;
+    logic set_sp0_hit, sp0_hit;
     logic save_y, save_nt, save_at, save_x;
 
     logic cyc_even;
@@ -74,6 +75,7 @@ module oam #(
             oam2_addr <= 0;
             full <= 0;
             overflow <= 0;
+            sp0 <= 0;
             sp0_hit <= 0;
             y <= 8'd240;
             nt <= 0;
@@ -82,7 +84,7 @@ module oam #(
             scan_r <= 0;
         end else begin
 
-            scan_r <= reg_scan ? scan : scan_r;
+            scan_r <= new_scan ? scan : scan_r;
             state <= next_state;
 
             oam_addr <= oam_rst ? 0:
@@ -95,9 +97,10 @@ module oam #(
                         oam2_inc ? oam2_addr + 1 :
                         oam2_addr;
 
-            full <= clr_oam2 ? 0 : full || set_full;
-            overflow <= clr_oam2 ? 0 : overflow || set_of;
-            sp0_hit <= clr_oam2 ? 0 : set_sp0 | sp0_hit;
+            full <= new_scan ? 0 : full || set_full;
+            overflow <= new_scan ? 0 : overflow || set_of;
+            sp0_hit <= new_scan ? 0 : set_sp0_hit | sp0_hit;
+            sp0 <= new_scan ? sp0_hit : sp0;
 
             y <= save_y ? oam2_dout : y;
             nt <= save_nt ? oam2_dout : nt;
@@ -123,19 +126,18 @@ module oam #(
         save_nt= 0;
         save_at= 0;
         save_x = 0;
-        set_sp0 = 0;
-        sp0 = 0;
+        set_sp0_hit = 0;
 
         ysrc = 0;
 
         next_state = state;
-        reg_scan = 0;
+        new_scan = 0;
 
         if (rend) begin
             case(cycle)
-                9'd0:          begin
+                9'd0:       begin
                             oam2_rst = 1;
-                            reg_scan = 1;
+                            new_scan = 1;
                             next_state = OAM_CLEAR;
                             end
                 9'd64:         begin
@@ -172,7 +174,7 @@ module oam #(
 
                     end else begin
                         //mark a hit on sprite 0
-                        set_sp0 = oam_addr==0;
+                        set_sp0_hit = oam_addr==0;
 
                         // sprite is in range, advance pointers for copy
                         oam_inc = 1;
@@ -191,7 +193,6 @@ module oam #(
             OAM_FETCH: begin
                 oam_rst = 1;            // keep oam_addr = 0
                 oam2_inc = 1;           // walk through oam2, unless cancelled below
-                sp0 = sp0_hit && (n2==0); // if this is sprite 0, emit signal
                 case(cycle8)
                     3'h0:  begin end //fetch y
                     3'h1:  save_y = 1;
@@ -200,7 +201,6 @@ module oam #(
                     3'h4:  begin save_x = 1; oam2_inc=0; end
                     default: oam2_inc=0; // hold oam2 on other cycles
                 endcase
-
             end
             default: begin oam2_inc = 1; end //IDLE
         endcase
@@ -223,9 +223,10 @@ module oam #(
     integer file, cnt;
     initial begin
         if (OAM_INIT != "") begin
+            $display("Loading OAM memory: %s ", OAM_INIT);
             file=$fopen(OAM_INIT,"rb");
             cnt = $fread(OAM, file, 0, 256);
-            $display("Loaded %d bytes of CHR mem", cnt);
+            // $display("Loaded %d bytes of CHR mem", cnt);
             $fclose(file);
         end
 

@@ -1,0 +1,24 @@
+
+
+NES master: 21.477272 MHz
+PPU:        5.369318 MHz    (master/4)
+CPU:        1.7897726 MHz   (master/12)
+
+screen size: 256 x 240 
+frame size: 341 x 261  (89000.5) [odd frames skip a cycle]
+frame rate: 60.329 Hz
+
+Ideal 640x480 @ 60Hz
+screen size: 640 x 480 
+frame size: 800 x 525  (420000)
+frame rate: 60.000 Hz
+pixel clock: 25.2 MHz
+
+Adjusted 640x480, match ppu frame rate
+screen size: 640 x 480 
+frame size: 800 x 525
+frame rate: 60.329 Hz
+pixel clock: 25.338 MHz
+
+ratio of hmdi to ppu pixel clocks:
+420000 / 89000.5 = 

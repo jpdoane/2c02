@@ -24,26 +24,22 @@ SYNTH_DCP=$(SYNTH_PATH)/$(TOP).dcp
 SRC_FILE=$(SYNTH_PATH)/sources.tcl
 
 $(SRC_FILE): $(SYNTH_PATH) $(HDL_SOURCE)
-	@rm -f $@ \
-	@for s in $(HDL_SOURCE); do \
+	@rm -f $@; \
+	for s in $(HDL_SOURCE) ; do \
 		echo "$$s" >> $@; \
-	done \
+	done
 
-XDC_FILE=$(SYNTH_PATH)/constrainsts.tcl
+XDC_FILE=$(SYNTH_PATH)/constraints.tcl
 
-# $(XDC_FILE): $(SYNTH_PATH) $(CONSTRIANTS)
-# 	echo $(CONSTRIANTS) > $@
-
+$(XDC_FILE): $(SYNTH_PATH) $(CONSTRIANTS)
+	@rm -f $@; \
+	for s in $(CONSTRIANTS) ; do \
+		echo "$$s" >> $@; \
+	done
 
 
 show:
 	@echo $(CONSTRIANTS)
-
-# @for c in $(CONSTRIANTS); do \
-# 	echo "$$c" >> $@; \
-# done
-
-
 
 .PHONY: synth
 synth: $(SYNTH_DCP)

@@ -18,18 +18,6 @@ proc create_report { reportName command } {
   }
 }
 
-proc load_sources {file_list} {
-}
-
-proc load_constraints {file_list} {
-    set fh [open $file_list r]
-    while {[gets $fh filename] >= 0} {
-        read_verilog -library xil_defaultlib -sv $filename
-        puts "Read file: $filename"
-    }
-    close $fh
-}
-
 create_project -in_memory -part xc7z010clg400-1
 
 set_param project.singleFileAddWarning.threshold 0
@@ -60,7 +48,7 @@ foreach dcp [get_files -quiet -all -filter file_type=="Design\ Checkpoint"] {
 }
 
 # load constraints
-set fh [open "constrainsts.tcl" r]
+set fh [open "constraints.tcl" r]
 while {[gets $fh filename] >= 0} {
     read_xdc $filename
     set_property used_in_implementation false [get_files $filename]

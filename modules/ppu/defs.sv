@@ -30,10 +30,7 @@ parameter CYCLE_RESETOFF = 9'd303;
 parameter CYCLE_BADFETCH = 9'd336;
 parameter CYCLE_SPDONE = 9'd320;
 
-parameter Y_PRERENDER = 9'd261;
-parameter Y_POSTRENDER = SCREEN_HEIGHT;
-parameter Y_BLANK = Y_POSTRENDER+1;
-parameter Y_LAST = 255;
+parameter FRAME_HEIGHT = 9'd262;
 
 parameter OAM_IDLE = 2'h0;
 parameter OAM_CLEAR = 2'h1;

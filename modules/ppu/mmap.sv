@@ -1,8 +1,8 @@
 
 module mmap #(
         parameter MIRRORV=1,
-        parameter CHR_INIT={`ROM_PATH,"chr.rom"},
-        parameter VRAM_INIT={`ROM_PATH,"nt.rom"}
+        parameter CHR_INIT={`ROM_PATH,"chr.mem"},
+        parameter VRAM_INIT={`ROM_PATH,"nt.mem"}
     )(
     input logic clk, rst,
     input logic [13:0] addr,
@@ -18,21 +18,11 @@ module mmap #(
     initial begin
         if (CHR_INIT != "") begin
             $display("Loading CHR memory: %s ", CHR_INIT);
-            file=$fopen(CHR_INIT,"rb");
-            cnt = $fread(CHR, file, 0, 2**CHR_DEPTH);
-            // $display("Loaded %d bytes of CHR mem", cnt);
-            // cnt=0;
-            // while (cnt<2**CHR_DEPTH) cnt = cnt + $fread(CHR[cnt], file,0, 2**CHR_DEPTH);
-            $fclose(file);
+            $readmemh(CHR_INIT, CHR);
         end
         if (VRAM_INIT != "") begin
-            $display("Loading Name Table memory: %s ", VRAM_INIT);
-            file=$fopen(VRAM_INIT,"rb");
-            cnt = $fread(VRAM, file, 0, 2**VRAM_DEPTH);
-            // $display("Loaded %d bytes of VRAM mem", cnt);
-            // cnt=0;
-            // while (cnt<2**VRAM_DEPTH) cnt = cnt + $fread(VRAM[cnt], file,0, 2**VRAM_DEPTH);
-            $fclose(file);
+            $display("Loading VRAM memory: %s ", VRAM_INIT);
+            $readmemh(VRAM_INIT, VRAM);
         end
     end
 

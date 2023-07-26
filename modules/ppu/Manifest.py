@@ -6,6 +6,7 @@ files = [
 "ppu.sv",
 "render.sv",
 "sprite.sv",
+"cpu_sim.sv",
 ]
 
 

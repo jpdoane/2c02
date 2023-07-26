@@ -24,59 +24,62 @@ module test_hdmi_upscale_top #(
 );
 
 
-    wire hdmi_locked;
-    wire ppu_locked;
-    wire clk_rst = btn[0];
-
-    wire rst0 = ~ppu_locked || ~hdmi_locked; 
-
-    logic rst_p, rst_p_r, rst_p_rr;
-    always_ff @(posedge clk_ppu) begin
-        rst_p_rr <= rst0;
-        rst_p_r <= rst_p_rr;
-        rst_p <= rst_p_rr | rst_p_r | rst_p_r;
-    end
-
-    logic rst_h, rst_h_r, rst_h_rr;
-    always_ff @(posedge clk_hdmi) begin
-        rst_h_rr <= rst_p;
-        rst_h_r <= rst_h_rr;
-        rst_h <= rst_h_rr | rst_h_r | rst_h_r;
-    end
-
-
-
-    logic new_frame;
+    wire locked;
+    wire rst_clocks = btn[0];
 
     assign  LED[0] = SW[0]; 
     assign  LED[1] = new_frame; 
-    assign  LED[2] = hdmi_locked; 
-    assign  LED[3] = ppu_locked; 
+    assign  LED[2] = 0; 
+    assign  LED[3] = locked; 
 
-    wire clk_tmds;
+    wire clk_hdmi_x5;
     wire clk_hdmi;
     wire clk_ppu;
+    wire clk_cpu;
 
-    mmcm_hdmi u_mmcm_hdmi(
-        .clk_hdmi_px  (clk_hdmi    ),
-        .clk_hdmi_px5 (clk_tmds ),
-        .reset        (clk_rst          ),
-        .locked       (hdmi_locked       ),
-        .clk_125      (CLK_125MHZ   )
+    wire rst_p, rst_h;
+    wire rst_cpu, rst_tdms;
+
+    clocks u_clocks(
+        .CLK_125MHZ (CLK_125MHZ ),
+        .rst_clocks    (rst_clocks    ),
+        .clk_hdmi_x5   (clk_hdmi_x5   ),
+        .clk_hdmi   (clk_hdmi   ),
+        .clk_ppu    (clk_ppu    ),
+        .clk_cpu    (clk_cpu    ),
+        .locked     (locked     ),
+        .rst_tdms   (rst_tdms   ),
+        .rst_hdmi   (rst_h   ),
+        .rst_ppu    (rst_p    ),
+        .rst_cpu    (rst_cpu    )
     );
 
-    clk_ppu_from_hdmi u_clk_ppu_from_hdmi(
-        .clk_ppu  (clk_ppu  ),
-        .reset    (clk_rst    ),
-        .locked   (ppu_locked   ),
-        .clk_hdmi (clk_hdmi )
-    );
 
-
-    logic [23:0] rgb_p,rgb_h;
     logic [8:0] px, py;
+    logic [23:0] rgb_p;
+    logic new_frame;
+
+    wire last_px = (px == IFRAME_WIDTH-1);
+    wire [8:0] px_next = last_px ? 0 : px + 1'b1;
+    wire [8:0] py_next = last_px ? py+1 : py;
+    always_ff @(posedge clk_ppu) begin
+        if (rst_p) begin
+            px <=0;
+            py <=0;
+        end
+        else 
+        begin
+            px <= new_frame ? 0 : px_next;
+            py <= new_frame ? 0 : py_next;
+        end
+    end
+
+    assign rgb_p = (px==0 || py==0 || px==ISCREEN_WIDTH-1 || py==ISCREEN_HEIGHT-1) ? 24'hffffff :
+                (px[0] ^ py[0]) ? {px[7:0], py[7:0], 8'h0} : 24'h0;
+
+
     logic [9:0] hx, hy;
-    logic stall;
+    logic [23:0] rgb_h;
     
     hdmi_upscaler
     #(
@@ -87,21 +90,20 @@ module test_hdmi_upscale_top #(
         .OSCREEN_WIDTH (OSCREEN_WIDTH),
         .OSCREEN_HEIGHT (OSCREEN_HEIGHT),
         .OFRAME_WIDTH (OFRAME_WIDTH),
-        .OFRAME_HEIGHT (OFRAME_HEIGHT)
+        .OFRAME_HEIGHT (OFRAME_HEIGHT),
+        .IPIXEL_LATENCY (1)
     )
     u_hdmi_upscaler (
         .clk_p     (clk_ppu     ),
         .rst_p     (rst_p       ),
         .clk_h     (clk_hdmi     ),
         .rst_h     (rst_h       ),
-        .aux       (SW),
         .rgb_p     (rgb_p     ),
-        .px        (px        ),
-        .py        (py        ),
-        .hx        (hx        ),
+        .aux       (SW),
+       .new_frame (new_frame),
+         .hx        (hx        ),
         .hy        (hy        ),
-        .rgb_h     (rgb_h     ),
-        .stall     (stall )
+        .rgb_h     (rgb_h     )
     );
 
 
@@ -119,7 +121,7 @@ module test_hdmi_upscale_top #(
         .VIDEO_REFRESH_RATE ( 59.94 )
     )
     u_hdmi(
-        .clk_pixel_x5      (clk_tmds      ),
+        .clk_pixel_x5      (clk_hdmi_x5      ),
         .clk_pixel         (clk_hdmi         ),
         .reset             (rst_h             ),
         .rgb               (rgb_h               ),
@@ -129,7 +131,6 @@ module test_hdmi_upscale_top #(
         .cy                 (hy        )
     );
 
-
     genvar i;
     generate
         for (i = 0; i < 3; i++)
@@ -138,27 +139,6 @@ module test_hdmi_upscale_top #(
         end
         OBUFDS #(.IOSTANDARD("TMDS_33")) obufds_clock(.I(tmds_clock), .O(HDMI_CLK), .OB(HDMI_CLK_N));
     endgenerate
-
-
-    wire last_px = (px == IFRAME_WIDTH-1);
-    wire last_line = (py == IFRAME_HEIGHT-1);
-    wire [8:0] px_next = last_px ? 0 : px + 1'b1;
-    wire [8:0] py_next = ~last_px ? py : last_line ? 0 : py + 1'b1;
-    always_ff @(posedge clk_ppu) begin
-        if (rst_p) begin
-            px <=0;
-            py <=0;
-        end
-        else 
-        begin
-            px <= stall ? px : px_next;
-            py <= stall ? py : py_next;
-        end
-    end
-
-    assign rgb_p = (px==0 || py==0 || px==ISCREEN_WIDTH-1 || py==ISCREEN_HEIGHT-1) ? 24'hffffff :
-                (px[0] ^ py[0]) ? {px[7:0], py[7:0], 8'h0} : 24'h0;
-
 
 
 endmodule

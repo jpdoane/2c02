@@ -1,5 +1,5 @@
 
-module ppu
+module ppu  #( parameter EXTERNAL_FRAME_TRIGGER=0 )
     (
     input logic clk, rst,
     input logic cpu_rw, cpu_cs,
@@ -13,9 +13,10 @@ module ppu
     output logic [7:0] ppu_data_o,
     output logic ppu_rd, ppu_wr,
 
-    output logic frame_sync,
     output logic [7:0] px_data,
-    output logic px_en
+    output logic px_en,
+    input logic frame_trigger,
+    output logic frame_sync
     );
 
     logic reg_re, reg_we, cs_r;
@@ -49,8 +50,14 @@ module ppu
     logic fetch_attr, fetch_chr;
     logic [12:0] pattern_idx;
     logic [4:0] palette_idx;
-    logic rend, vblank, vblank_clr, inc_cx, inc_y, return00;
+    logic rend, vblank, vblank_r, inc_cx, inc_y, return00;
+    logic NMI_occured, NMI_output;
     logic sp0, sp_of;
+
+    assign nmi = NMI_occured && NMI_output;
+
+    wire vblank_re = vblank & ~vblank_r;
+    wire vblank_fe = vblank_r & ~vblank;
 
     // v/t: registers
     // yyy NN YYYYY XXXXX
@@ -93,7 +100,9 @@ module ppu
             inc_v<=0;
             ppu_wr <= 0;
             cpu_ppu_read <= 0;
-            vblank_clr <= 0;
+            vblank_r <= 0;
+            NMI_occured <= 0;
+            NMI_output <= 0;
         end else begin
             ppuctrl <= ppuctrl;
             ppumask <= ppumask;
@@ -105,7 +114,9 @@ module ppu
             t <= t;
             fine_x<= fine_x;
             inc_v <= 0;
-            vblank_clr <= vblank_clr && vblank;
+            vblank_r <= vblank;
+            NMI_occured <= (NMI_occured || vblank_re) & ~vblank_fe;
+            NMI_output <= NMI_output;
 
             cpu_data_io <= cpu_data_io;       // output data will be maintained, emulating ppu i/o latch
                                             // input data is also copied to data_o on writes
@@ -114,8 +125,8 @@ module ppu
             if(reg_re) begin    // cpu read (ppu write back to cpu)
                 case(cpu_addr)
                     PPUSTATUS_ADDR: begin
-                                    cpu_data_io[7:5] <= {vblank && ~vblank_clr, sp0, sp_of}; //bits 4:0 maintain latched data
-                                    vblank_clr <= 1;            // clear vblank after read
+                                    cpu_data_io[7:5] <= {NMI_occured, sp0, sp_of}; //bits 4:0 maintain latched data
+                                    NMI_occured <= 0;            // clear vblank after read
                                     w <= 0;                     // reset write toggle
                                     end
                     // OAMDATA_ADDR:   cpu_data_io <= oamdata;
@@ -132,6 +143,7 @@ module ppu
                     PPUCTRL_ADDR:   begin
                                         t[11:10] <= cpu_data_i[1:0];  // nametable select
                                         ppuctrl <= cpu_data_i;
+                                        NMI_output <= cpu_data_i[7];
                                     end
                     // PPUMASK_ADDR:   ppumask <= cpu_data_i;
                     // OAMADDR_ADDR:   oamaddr <= cpu_data_i;
@@ -144,9 +156,9 @@ module ppu
                                         t[9:5] <= cpu_data_i[7:3];   // coarse y
                                         t[14:12] <= cpu_data_i[2:0]; // fine y
                                     end
-                                    w = ~w;
+                                    w <= ~w;
                                     end
-                    PPUADDR_ADDR:   if (!rst_delay) begin
+                    PPUADDR_ADDR:   begin
                                     if (~w) begin
                                         // high addr
                                         t[14:8] <= {1'b0, cpu_data_i[5:0]};
@@ -155,7 +167,7 @@ module ppu
                                         t[7:0] <= cpu_data_i;
                                         v <= {t[14:8], cpu_data_i};
                                     end
-                                    w = ~w;
+                                    w <= ~w;
                                     end
                     PPUDATA_ADDR:   begin
                                     pal_wr <= vpal;
@@ -231,9 +243,13 @@ module ppu
 
 
 
-    render u_render(
+    render #(
+        .EXTERNAL_FRAME_TRIGGER (EXTERNAL_FRAME_TRIGGER)
+        )
+    u_render(
         .clk         (clk         ),
         .rst         (rst         ),
+        .new_frame  (frame_trigger),
         // .sp_id       (sp_id       ),
         // .sp_attr     (sp_attr     ),
         // .sp_data     (sp_data     ),

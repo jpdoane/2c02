@@ -1,8 +1,8 @@
 
-module render
+module render #( parameter EXTERNAL_FRAME_TRIGGER=0 )
     (
     input logic clk, rst,
-
+    input logic new_frame,
     // output logic [2:0] sp_id,
     // output logic [2:0] sp_attr,
     // input logic [7:0] sp_data,
@@ -52,11 +52,21 @@ module render
     assign oam_addr_wr=0;
     assign oam_din=0;
     assign oam_wr=0;
+            
+    // wrap to -1 for prerender line unless EXTERNAL_FRAME_TRIGGER, in which case y wraps to -1 (prerend) on external trigger
+    wire [8:0] ynext;
+    wire trigger_frame;
+    generate 
+        if (EXTERNAL_FRAME_TRIGGER) begin
+            assign ynext = y+1;
+            assign trigger_frame = new_frame;
+        end else begin
+            assign ynext = (y==FRAME_HEIGHT-2) ? 9'h1ff : y+1;
+            assign trigger_frame = 0;
+        end
+    endgenerate
 
 
-
-
-    wire [8:0] ynext = prerender ? 0 : y+1;
     always @(posedge clk) begin
         if (rst) begin
             // fetch_attr <= 0;
@@ -67,7 +77,7 @@ module render
             pat1 <= 0;
             px_en <= 0;
             vblank <= 0;
-            y <= Y_PRERENDER;
+            y <= -1; //prerender
             cycle <= 0;
             load_sr<=0;
             return00 <= 0;
@@ -79,6 +89,7 @@ module render
             inc_y <= 0;
             load_sp_sr <= 0;
             sp0 <= 0;
+            sr_en <= 0;
         end
         else begin
 
@@ -87,45 +98,52 @@ module render
             pat0 <= save_pat0 ? data_i : pat0;
             pat1 <= save_pat1 ? data_i : pat1;
 
-            sp_eval <= sp_eval;
-
-            vblank <= vblank;
             prerender<=0;
             postrender<=0; 
-            return00 <= 0;
-
-            // these flags take effect on cycle 1 (after first cycle of new y)
-            case(y)
-                Y_PRERENDER:    begin
-                                vblank <= 0;
-                                prerender <= 1;
-                                sp0 <= 0;
-                                end
-                Y_POSTRENDER:   postrender <= 1;
-                Y_BLANK:        vblank <= 1;
-            endcase
-
-            sp0 <= (sp0_opaque && bg_opaque) || sp0;
-
+            vblank <= vblank;
+            sp_eval <= sp_eval;
+            sr_en<=sr_en;
             px_en <= px_en;
             y <= y;
             cycle <= cycle + 1; 
 
+            sp0 <= (sp0_opaque && bg_opaque) || sp0;
             inc_cx <= 0;
             inc_y <= 0;
             load_sp_sr <= 0;
             return00 <= prerender && return00;
-            case(cycle)
-                0:              begin sr_en <=1; px_en <= vis_line; end
-                SCREEN_WIDTH:   begin px_en <= 0; inc_y <= 1; sp_eval <= rend; end
-                CYCLE_RESETON:  begin return00 <= prerender; end
-                CYCLE_RESETOFF: return00 <= 0;
-                CYCLE_SPDONE:   begin sp_eval <= 0; load_sp_sr <= vis_line; end
-                CYCLE_BADFETCH: sr_en <= 0;
-                CYCLE_LAST:     begin sr_en <=1; cycle <= 0; y<=ynext; end
-            endcase
-            
 
+            if (trigger_frame) begin
+                y <= 9'h1ff; //prerender
+                cycle <= 0;
+                sp_eval <= 0;
+                px_en <= 0;
+                sr_en <= 1;
+                return00 <= 0;
+            end else begin
+
+                // update screen state
+                // these flags take effect on cycle 1 (after first cycle of new y)
+                case(y)
+                    9'h1ff:                 begin //prerender
+                                        vblank <= 0;
+                                        prerender <= 1;
+                                        sp0 <= 0;
+                                        end
+                    SCREEN_HEIGHT:      postrender <= 1;
+                    SCREEN_HEIGHT+1:    vblank <= 1;
+                endcase
+
+                case(cycle)
+                    0:              begin sr_en <=1; px_en <= vis_line; end
+                    SCREEN_WIDTH:   begin px_en <= 0; inc_y <= 1; sp_eval <= rend; end
+                    CYCLE_RESETON:  begin return00 <= prerender; end
+                    CYCLE_RESETOFF: return00 <= 0;
+                    CYCLE_SPDONE:   begin sp_eval <= 0; load_sp_sr <= vis_line; end
+                    CYCLE_BADFETCH: sr_en <= 0;
+                    CYCLE_LAST:     begin sr_en <=1; cycle <= 0; y<=ynext; end
+                endcase
+            end    
         end
     end
 
@@ -176,22 +194,16 @@ module render
             pal_dat <= 0;
         end else begin
             if (sr_en) begin
-                tile_sr0 <=  {tile_sr0[14:0], 1'bx}; //shift in X's to aid debuging
-                tile_sr1 <=  {tile_sr1[14:0], 1'bx}; //shift in X's to aid debuging
-                pal_sr0 <=  {pal_sr0[6:0], pal_dat[0]}; //shift in X's to aid debuging
-                pal_sr1 <=  {pal_sr1[6:0], pal_dat[1]}; //shift in X's to aid debuging
+                tile_sr0 <=  {tile_sr0[14:0], 1'b0};
+                tile_sr1 <=  {tile_sr1[14:0], 1'b0};
+                pal_sr0 <=  {pal_sr0[6:0], pal_dat[0]};
+                pal_sr1 <=  {pal_sr1[6:0], pal_dat[1]};
                 if (load_sr) begin
                     // shift in new tile
                     tile_sr0[7:0] <= pat0;
                     tile_sr1[7:0] <= pat1;
                     pal_dat <= pal;
                 end
-                // if (sp_eval) begin
-                //     // helpful for debugging
-                //     tile_sr0[7:0] <= 'x;
-                //     tile_sr1[7:0] <= 'x;
-                //     pal_dat <= 'x;
-                // end
             end else begin
                 tile_sr0 <= tile_sr0;
                 tile_sr1 <= tile_sr1;

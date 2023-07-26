@@ -9,24 +9,24 @@ module hdmi_upscaler #(
     parameter  OFRAME_HEIGHT = ISCREEN_HEIGHT*SUB_Y,
     parameter  SUB_X = 2,
     parameter  SUB_Y = 2,
-    parameter  OSCREEN_SHIFT = (OSCREEN_WIDTH - ISCREEN_WIDTH*SUB_X) >> 1
+    parameter  OSCREEN_SHIFT = (OSCREEN_WIDTH - ISCREEN_WIDTH*SUB_X) >> 1,
+    parameter  IPIXEL_LATENCY = 1                 // first pixel of new frame will be IPIXEL_LATENCY clocks after new_frame is asserted
     )
 (
   input logic clk_p,                // ppu pixel clock
   input logic rst_p,                // clk_p domain reset
   input logic clk_h,                // hdmi pixel clock
   input logic rst_h,                // clk_h domain reset
-  input logic [1:0] aux,
   input logic [23:0] rgb_p,         // rgb from ppu
-  input logic [8:0] px, py,         // input pixel counters  
+  output logic new_frame,           // signals start of each frame, first pixel should arrive IPIXEL_LATENCY clocks later
   output logic [9:0] hx, hy,        // ouput hdmi counters
-  output logic [23:0] rgb_h,        // rgb to hdmi
-  output logic stall                // stall input pipeline to sync with hdmi frame
+  output logic [23:0] rgb_h        // rgb to hdmi
 );
 
-    localparam int EXCESS_CYCLES_TWOFRAMES = (OFRAME_HEIGHT - IFRAME_HEIGHT*SUB_Y)*IFRAME_WIDTH;
-    localparam int EXCESS_CYCLES_EVEN = EXCESS_CYCLES_TWOFRAMES >> 1;
-    localparam int EXCESS_CYCLES_ODD = EXCESS_CYCLES_EVEN + EXCESS_CYCLES_TWOFRAMES[0];
+    // icycles per frame
+    localparam int ICYCLES_MULTIFRAME = OFRAME_HEIGHT*IFRAME_WIDTH;
+    localparam int ICYCLES_EVEN = ICYCLES_MULTIFRAME >> 1;                  //icycles per even frame
+    localparam int ICYCLES_ODD = ICYCLES_EVEN + ICYCLES_MULTIFRAME[0];      //icycles per odd frame
 
     // assert(OFRAME_HEIGHT >= IFRAME_HEIGHT*SUB_Y);
 
@@ -36,42 +36,45 @@ module hdmi_upscaler #(
 // clk_p domain (slower)
 //
 
-    // buffer incoming pixels in buff1
-    // stall input pipeline as needed to maintain sync with hdmi
-    int i;
-
-    logic [8:0] stall_cnt;
-    assign stall = ~(stall_cnt == 0);
-
-    // signal we have buffered the first line, and hdmi frame can start
-    wire first_line_done = py==0 && px==ISCREEN_WIDTH;
-
-    // ppu and hdmi counters may vary slightly eveey other frame due to odd cycle
-    // so only force sync every other frame
-    wire signal_new_frame = first_line_done && ~frame_odd; 
-
-    // starting the last line which will initialize stalls if needed
-    wire last_line_start = py==IFRAME_HEIGHT-1 && px==0;
-
     // parity bit to track even/odd frames
-    logic frame_odd;
+    logic frame_odd = 0;
+    logic p_sync = 1;
+    logic [17:0] pcnt = 0;
+    logic [8:0] px = 0;
+    
+    // signal external rendering system
+    assign new_frame = frame_odd ? pcnt == ICYCLES_ODD-IPIXEL_LATENCY : pcnt == ICYCLES_EVEN-IPIXEL_LATENCY;
+    // signal internal counter to roll over
+    wire new_pframe = frame_odd ? pcnt == ICYCLES_ODD-1 : pcnt == ICYCLES_EVEN-1;
+
+    // manage p coutner and buffer incoming pixels
+    int i;
     always_ff @(posedge clk_p) begin
         if (rst_p) begin
             for (i = 0; i < ISCREEN_WIDTH; i++) ibuf[i] <= 24'hff0000;
-            stall_cnt <= 0;
+
+            pcnt<= 0;
+            px <= 0;
             frame_odd <= 0;
+            p_sync <= 1;
+
         end else begin
             for (i = 0; i < ISCREEN_WIDTH; i++) ibuf[i] <= ibuf[i];
             if (px < ISCREEN_WIDTH) ibuf[px] <= rgb_p;
 
-            stall_cnt <= stall ? stall_cnt-1 : 0;
-            frame_odd <= frame_odd;
+            //count x position (for filling scanline buffer)
+            px <= new_pframe || (px==IFRAME_WIDTH-1) ? 0 : px + 1;
+            //count cycles (for triggering new frame)
+            pcnt <= new_pframe ? 0 : pcnt + 1;
 
-            // initiate stall on final scan line
-            if (last_line_start) begin
-                stall_cnt <= frame_odd ? EXCESS_CYCLES_ODD : EXCESS_CYCLES_EVEN;
-                frame_odd <= ~frame_odd;
-            end
+            //track even/odd frames (due to different in cycles/frame)
+            frame_odd <= new_pframe ? ~frame_odd : frame_odd;
+
+            // initally high, this goes low once first line is buffered,
+            // signaling output hdmi counters to start reading buffer
+            // if all counts and clocks are consistent, input and out frames should remain synced
+            p_sync <= p_sync && ~(px==ISCREEN_WIDTH);
+
         end
     end
     
@@ -86,11 +89,11 @@ module hdmi_upscaler #(
     logic draw_on;
     wire pen_down = hx == OSCREEN_SHIFT;
     wire pen_up = hx == OSCREEN_SHIFT+ISCREEN_WIDTH*SUB_X;
-
-    logic new_frame, new_frame_r, new_frame_rr;
-    wire new_hline = hx == OFRAME_WIDTH - 1;
-    wire new_hframe = new_frame_rr || (hy == OFRAME_HEIGHT - 1 && new_hline);
     
+    logic h_sync, h_sync_r, h_sync_rr;
+    wire new_hline = hx == OFRAME_WIDTH - 1;
+    wire new_hframe = h_sync_rr || (hy == OFRAME_HEIGHT - 1 && new_hline);
+
     always_ff @(posedge clk_h)
     begin
         if (rst_h)
@@ -102,16 +105,16 @@ module hdmi_upscaler #(
             hx_idx <= 0;
             draw_on <= 0;
 
-            new_frame <= 0;
-            new_frame_r <= 0;
-            new_frame_rr <= 0;
+            h_sync <= 1;
+            h_sync_r <= 1;
+            h_sync_rr <= 1;
         end
         else
         begin
 
-            new_frame <= aux[0] && signal_new_frame;
-            new_frame_r <= new_frame;
-            new_frame_rr <= new_frame_r;
+            h_sync <= p_sync;
+            h_sync_r <= h_sync;
+            h_sync_rr <= h_sync_r;
 
             draw_on <= (draw_on || pen_down) && ~pen_up;
 
@@ -139,7 +142,7 @@ module hdmi_upscaler #(
         end
     end
 
-    wire [23:0] rgb_buf = aux[0] ? 24'h00ff00 : obuf[hx_idx];
+    wire [23:0] rgb_buf = obuf[hx_idx];
 
 
 endmodule

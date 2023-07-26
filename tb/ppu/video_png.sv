@@ -2,7 +2,7 @@
 module video #(
     parameter IMAGE_W=256,
     parameter IMAGE_H=240,
-    parameter MAX_FRAMES=1
+    parameter MAX_FRAMES=1000
     )
     (
     input logic clk, rst,
@@ -15,13 +15,7 @@ module video #(
 
     integer file, frame_cnt, cnt;
     string filename;
-    initial begin
-        frame_cnt = 0;
-        file=$fopen(`PALFILE,"rb");
-        cnt = $fread(pal,file);
-        $fclose(file);
-        file=0;
-    end
+    initial $readmemh(`PALFILE, pal);
 
     logic new_frame, file_open=0;
     logic frame_r;

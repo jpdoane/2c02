@@ -1,23 +1,14 @@
-`timescale 1us/1ns
-
+`timescale 1ns/1ps
 
 module hdmi_upscale_tb #(
     // parameter ISCREEN_WIDTH =   9'd256,
     // parameter ISCREEN_HEIGHT =  9'd240,
     // parameter IFRAME_WIDTH =  9'd341,
     // parameter IFRAME_HEIGHT =  9'd262,
-    // parameter SUB_X =  2,
-    // parameter SUB_Y =  2,
     // parameter OSCREEN_WIDTH =  10'd720,
     // parameter OSCREEN_HEIGHT =  10'd480,
     // parameter OFRAME_WIDTH =  10'd858,
     // parameter OFRAME_HEIGHT =  10'd525,
-    // parameter  NEWFRAME_LINE = OFRAME_HEIGHT-3 ,                                 // new_frame will be high for duration of this output scan line
-    // parameter OSCANLINE_PERIOD = 1000.0,
-    // parameter ISCANLINE_PERIOD = SUB_Y*OSCANLINE_PERIOD,
-    // parameter PPU_CLK_HALFPERIOD = ISCANLINE_PERIOD/IFRAME_WIDTH/2,
-    // parameter HMDI_CLK_HALFPERIOD = OSCANLINE_PERIOD/OFRAME_WIDTH/2,
-    // parameter SIM_LENGTH = OSCANLINE_PERIOD*10
 
     parameter ISCREEN_WIDTH =   25,
     parameter ISCREEN_HEIGHT =  24,
@@ -28,45 +19,56 @@ module hdmi_upscale_tb #(
     parameter OFRAME_WIDTH =  86,
     parameter OFRAME_HEIGHT =  53,
 
-    // clocks
-    parameter OSCANLINE_PERIOD = 1000.0,
-    parameter ISCANLINE_PERIOD = 2*OSCANLINE_PERIOD,
-    parameter PPU_CLK_HALFPERIOD = ISCANLINE_PERIOD/IFRAME_WIDTH/2,
-    parameter HMDI_CLK_HALFPERIOD = OSCANLINE_PERIOD/OFRAME_WIDTH/2,
-    parameter SIM_LENGTH = OSCANLINE_PERIOD*OFRAME_HEIGHT*5.1
+    // sim timing
+    parameter real HDMI_CLK = 27.0,
+    parameter real PPU_CLK = (0.5*HDMI_CLK*IFRAME_WIDTH)/OFRAME_WIDTH,
+    parameter real PPU_HDMI_CLK_RATIO = PPU_CLK/HDMI_CLK,
+    parameter real FRAME_TIME = 1000.0*OFRAME_WIDTH*OFRAME_HEIGHT/HDMI_CLK,
+    parameter SIM_LENGTH = 1.25*FRAME_TIME
 )();
 
-    logic clk_tmds;
-    logic clk_hdmi;
-    logic clk_ppu;
-    logic rst_p,rst_h;
-    logic px_en;
-    
+    logic CLK_125MHZ, rst_clocks;
     initial begin
-        clk_tmds =0;
-        clk_hdmi =0;
-        clk_ppu =0;
-        rst_p = 1;
-        rst_h = 1;
-        #PPU_CLK_HALFPERIOD
-        #PPU_CLK_HALFPERIOD
-        #PPU_CLK_HALFPERIOD
-        #PPU_CLK_HALFPERIOD
-        rst_p = 0;
-        rst_h = 0;
+
+        $display("PPU_CLK %f", PPU_CLK);
+        $display("HDMI_CLK %f", HDMI_CLK);
+        $display("FRAME_TIME %f", FRAME_TIME);
+
+        CLK_125MHZ = 0;
+        rst_clocks=1;
+        #20;
+        rst_clocks=0;
 
         #SIM_LENGTH;
+        // #1000000
         $finish;
-
     end
+    always #4 CLK_125MHZ = ~CLK_125MHZ;
 
-    always #PPU_CLK_HALFPERIOD clk_ppu = ~clk_ppu;
-    always #HMDI_CLK_HALFPERIOD clk_hdmi = ~clk_hdmi;
+    wire clk_hdmi_x5, clk_hdmi, clk_ppu, clk_cpu;
+    wire rst_p, rst_h, rst_cpu, rst_tdms;
+
+    clocks #(
+        .PPU_HDMI_CLK_RATIO (PPU_HDMI_CLK_RATIO)
+    )
+    u_clocks(
+        .CLK_125MHZ (CLK_125MHZ ),
+        .rst_clocks    (rst_clocks    ),
+        .clk_hdmi_x5   (clk_hdmi_x5   ),
+        .clk_hdmi   (clk_hdmi   ),
+        .clk_ppu    (clk_ppu    ),
+        .clk_cpu    (clk_cpu    ),
+        .locked     (locked     ),
+        .rst_tdms   (rst_tdms   ),
+        .rst_hdmi   (rst_h   ),
+        .rst_ppu    (rst_p    ),
+        .rst_cpu    (rst_cpu    )
+    );
+    
 
     logic [23:0] rgb_p,rgb_h;
-    logic [8:0] px, py;
     logic [9:0] hx, hy;
-    logic stall;
+    logic new_frame;
 
     hdmi_upscaler
     #(
@@ -78,6 +80,7 @@ module hdmi_upscale_tb #(
         .OSCREEN_HEIGHT (OSCREEN_HEIGHT),
         .OFRAME_WIDTH (OFRAME_WIDTH),
         .OFRAME_HEIGHT (OFRAME_HEIGHT)
+        .IPIXEL_LATENCY (1)                 // first pixel of new frame will be IPIXEL_LATENCY clocks after new_frame is asserted
     )
     u_hdmi_upscaler (
         .clk_p     (clk_ppu     ),
@@ -85,21 +88,19 @@ module hdmi_upscale_tb #(
         .clk_h     (clk_hdmi     ),
         .rst_h     (rst_h       ),
         .rgb_p     (rgb_p     ),
-        .aux        (2'b11),
-        .px        (px        ),
-        .py        (py        ),
+        .aux        (2'b00),
+        .new_frame (new_frame),
         .hx        (hx        ),
         .hy        (hy        ),
-        .rgb_h     (rgb_h     ),
-        .stall     (stall     )
+        .rgb_h     (rgb_h     )
     );
 
 
+    logic [8:0] px, py;
 
     wire last_px = (px == IFRAME_WIDTH-1);
-    wire last_line = (py == IFRAME_HEIGHT-1);
     wire [8:0] px_next = last_px ? 0 : px + 1'b1;
-    wire [8:0] py_next = ~last_px ? py : last_line ? 0 : py + 1'b1;
+    wire [8:0] py_next = last_px ? py+1 : py;
     always_ff @(posedge clk_ppu) begin
         if (rst_p) begin
             px <=0;
@@ -107,14 +108,13 @@ module hdmi_upscale_tb #(
         end
         else 
         begin
-            px <= stall ? px : px_next;
-            py <= stall ? py : py_next;
+            px <= new_frame ? 0 : px_next;
+            py <= new_frame ? 0 : py_next;
         end
     end
 
     assign rgb_p = (px==0 || py==0 || px==ISCREEN_WIDTH-1 || py==ISCREEN_HEIGHT-1) ? 24'hffffff :
                 (px[0] ^ py[0]) ? {px[7:0], py[7:0], 8'h0} : 24'h0;
-
 
 
     initial begin

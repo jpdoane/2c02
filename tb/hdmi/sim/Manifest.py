@@ -10,6 +10,6 @@ files = [
 ]
 
 modules = {
-  "local" : [ "../../../modules/hdmi" ],
+  "local" : [ "../../../modules/hdmi", "../../../modules/clocks" ],
 }
 

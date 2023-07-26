@@ -1,6 +1,6 @@
 
 module oam #(
-        parameter OAM_INIT={`ROM_PATH,"oam.rom"}
+        parameter OAM_INIT={`ROM_PATH,"oam.mem"}
     )(
     input logic clk, rst, rend,
     input logic [8:0] cycle,
@@ -224,16 +224,8 @@ module oam #(
     initial begin
         if (OAM_INIT != "") begin
             $display("Loading OAM memory: %s ", OAM_INIT);
-            file=$fopen(OAM_INIT,"rb");
-            cnt = $fread(OAM, file, 0, 256);
-            // $display("Loaded %d bytes of CHR mem", cnt);
-            $fclose(file);
+            $readmemh(OAM_INIT, OAM);
         end
-
-        // initialize OAM2?
-        // for(cnt = 0; cnt < 64; cnt = cnt+1) 
-        //     OAM2[cnt] = 8'hff;
-
     end
 
 endmodule

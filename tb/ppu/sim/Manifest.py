@@ -11,6 +11,6 @@ files = [
 ]
 
 modules = {
-  "local" : [ "../../../modules/ppu" ],
+  "local" : [ "../../../modules/ppu", "../../../modules/clocks" ],
 }
 

@@ -3,12 +3,8 @@
 ## - uncomment the lines corresponding to used pins
 ## - rename the used ports (in each line, after get_ports) according to the top level signal names in the project
 
-## Clock Signal
+## Master 125MHz clock
 set_property -dict { PACKAGE_PIN H16    IOSTANDARD LVCMOS33 } [get_ports { CLK_125MHZ }]; #IO_L13P_T2_MRCC_35 Sch=SYSCLK
-create_clock -add -name sys_clk_pin -period 8.00 -waveform {0 4} [get_ports { CLK_125MHZ }];#set
-# create_generated_clock -name clk_hdmi [get_pins mmcm/CLKOUT0]
-# create_generated_clock -name clk_ppu -source clk_hdmi -edges {1 2 11} [get_pins BUFGCE_ppu/O]
-# create_generated_clock -name clk_cpu -source clk_hdmi -edges {1 2 31} [get_pins BUFGCE_cpu/O]
 
 ## Switches
 set_property -dict { PACKAGE_PIN M20  IOSTANDARD LVCMOS33 } [get_ports { SW[0] }]; #IO_L7N_T1_AD2N_35 Sch=SW0

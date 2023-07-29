@@ -1,0 +1,22 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Sat Jul 29 02:53:40 2023
+[*]
+[dumpfile] "/home/jpdoane/dev/2c02/tb/hdmi/sim/hdmi_upscale_tb.vcd"
+[dumpfile_mtime] "Sat Jul 29 02:53:19 2023"
+[dumpfile_size] 1497499
+[savefile] "/home/jpdoane/dev/2c02/tb/hdmi/hdmi_upscale_tb.sav"
+[timestart] 0
+[size] 1000 600
+[pos] -1 -1
+*-35.938393 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 211
+[signals_width] 94
+[sst_expanded] 1
+[sst_vpaned_height] 143
+@28
+hdmi_upscale_tb.clk_cpu
+@29
+hdmi_upscale_tb.clk_hdmi
+[pattern_trace] 1
+[pattern_trace] 0

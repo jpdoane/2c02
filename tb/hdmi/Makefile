@@ -1,22 +1,9 @@
 
-.PHONY: all
-all: sim
+include ../../inc/make.paths
 
-.PHONY: sim
-sim: sim/Makefile
-	make -C sim
+TOP=hdmi_upscale_tb
+HDL_SOURCE = $(CLK_SOURCE) $(HDMI_SOURCE) $(TOP).sv
 
-.PHONY: view
-view:
-	gtkwave sim/dump.vcd -a sim/wave.sav &
 
-sim/Makefile:
-	cd sim && hdlmake -a && \
-	echo '.PHONY: \044(VERILOG_OBJ)' >> Makefile 
+include ../../inc/make.sim
 
-.PHONY: clean
-clean:
-	make -C sim/ clean || true
-	rm -f sim/Makefile sim/*.vvp sim/*.vcd
-	
-	

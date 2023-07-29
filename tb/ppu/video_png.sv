@@ -42,7 +42,7 @@ module video #(
                     end
                 end
                 frame_cnt = frame_cnt+1;
-                filename = $sformatf("frames/frame_%0d.ppm", frame_cnt);
+                filename = $sformatf("frame_%0d.ppm", frame_cnt);
                 file=$fopen(filename,"w");        
                 $fwrite(file,"P3\n");
                 $fwrite(file,"%0d %0d\n",IMAGE_W, IMAGE_H);

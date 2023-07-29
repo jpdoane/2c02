@@ -20,7 +20,7 @@ module ppu_tb #(
         $finish;
     end
     initial begin
-        // $dumpfile(`DUMP_WAVE_FILE);
+        $dumpfile(`DUMP_WAVE_FILE);
         $dumpvars(0, ppu_tb);
     end
 

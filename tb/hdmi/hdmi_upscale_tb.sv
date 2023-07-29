@@ -47,6 +47,7 @@ module hdmi_upscale_tb #(
 
     wire clk_hdmi_x5, clk_hdmi, clk_ppu, clk_cpu;
     wire rst_p, rst_h, rst_cpu, rst_tdms;
+    wire locked;
 
     clocks #(
         .PPU_HDMI_CLK_RATIO (PPU_HDMI_CLK_RATIO)
@@ -79,8 +80,8 @@ module hdmi_upscale_tb #(
         .OSCREEN_WIDTH (OSCREEN_WIDTH),
         .OSCREEN_HEIGHT (OSCREEN_HEIGHT),
         .OFRAME_WIDTH (OFRAME_WIDTH),
-        .OFRAME_HEIGHT (OFRAME_HEIGHT)
-        .IPIXEL_LATENCY (1)                 // first pixel of new frame will be IPIXEL_LATENCY clocks after new_frame is asserted
+        .OFRAME_HEIGHT (OFRAME_HEIGHT),
+        .IPIXEL_LATENCY (1)
     )
     u_hdmi_upscaler (
         .clk_p     (clk_ppu     ),
@@ -88,13 +89,11 @@ module hdmi_upscale_tb #(
         .clk_h     (clk_hdmi     ),
         .rst_h     (rst_h       ),
         .rgb_p     (rgb_p     ),
-        .aux        (2'b00),
-        .new_frame (new_frame),
-        .hx        (hx        ),
+       .new_frame (new_frame),
+         .hx        (hx        ),
         .hy        (hy        ),
         .rgb_h     (rgb_h     )
     );
-
 
     logic [8:0] px, py;
 
@@ -118,7 +117,7 @@ module hdmi_upscale_tb #(
 
 
     initial begin
-        // $dumpfile(`DUMP_WAVE_FILE);
+        $dumpfile(`DUMP_WAVE_FILE);
         $dumpvars(0, hdmi_upscale_tb);
     end
 

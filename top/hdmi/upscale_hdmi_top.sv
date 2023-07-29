@@ -1,5 +1,5 @@
 
-module test_hdmi_upscale_top #(
+module upscale_hdmi_top #(
     parameter ISCREEN_WIDTH =   9'd256,
     parameter ISCREEN_HEIGHT =  9'd240,
     parameter IFRAME_WIDTH =  9'd341,
@@ -35,8 +35,9 @@ module test_hdmi_upscale_top #(
     wire clk_hdmi_x5;
     wire clk_hdmi;
     wire clk_ppu;
-    wire clk_cpu;
-
+    wire clk_cpu; //, clk_cpum2;
+    wire [1:0] cpu_phase;
+    
     wire rst_p, rst_h;
     wire rst_cpu, rst_tdms;
 
@@ -47,6 +48,7 @@ module test_hdmi_upscale_top #(
         .clk_hdmi   (clk_hdmi   ),
         .clk_ppu    (clk_ppu    ),
         .clk_cpu    (clk_cpu    ),
+        .cpu_phase    (cpu_phase    ),
         .locked     (locked     ),
         .rst_tdms   (rst_tdms   ),
         .rst_hdmi   (rst_h   ),
@@ -99,8 +101,7 @@ module test_hdmi_upscale_top #(
         .clk_h     (clk_hdmi     ),
         .rst_h     (rst_h       ),
         .rgb_p     (rgb_p     ),
-        .aux       (SW),
-       .new_frame (new_frame),
+        .new_frame (new_frame),
          .hx        (hx        ),
         .hy        (hy        ),
         .rgb_h     (rgb_h     )

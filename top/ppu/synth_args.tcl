@@ -1,0 +1,2 @@
+-verilog_define ROM_PATH="/home/jpdoane/dev/2c02/roms/smb/"
+-verilog_define PALFILE="/home/jpdoane/dev/2c02/roms/nes.mem"

@@ -11,11 +11,14 @@ module video #(
     input logic frame
     );
 
-    logic [7:0] pal [191:0];
+    logic [23:0] pal [63:0];
 
     integer file, frame_cnt, cnt;
     string filename;
-    initial $readmemh(`PALFILE, pal);
+    initial begin
+        $readmemh(`PALFILE, pal);
+        frame_cnt = 0;
+    end
 
     logic new_frame, file_open=0;
     logic frame_r;
@@ -50,10 +53,10 @@ module video #(
         end
     end
 
-    logic [7:0] px_r,px_g,px_b;
-    assign px_r = pal[pixel[5:0]*3];
-    assign px_g = pal[pixel[5:0]*3 + 1];
-    assign px_b = pal[pixel[5:0]*3 + 2];
+    wire [23:0] px_rgb = pal[pixel[5:0]];
+    wire [7:0] px_r = px_rgb[23:16];
+    wire [7:0] px_g = px_rgb[15:8];
+    wire [7:0] px_b = px_rgb[7:0];
 
     always @(posedge clk) begin
         if (file_open && pixel_en) begin

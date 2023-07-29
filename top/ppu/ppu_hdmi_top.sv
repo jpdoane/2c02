@@ -24,10 +24,11 @@ module ppu_hdmi_top #(
 
     wire rst_clocks = btn[0];
 
-    wire clk_ppu, clk_cpu, clk_cpum2;
+    wire clk_ppu, clk_cpu;
     wire clk_hdmi_x5, clk_hdmi;
     wire rst_ppu, rst_cpu, rst_tdms, rst_hdmi;
     wire locked;
+    wire [1:0] cpu_phase;
 
 clocks  u_clocks(
     .CLK_125MHZ  (CLK_125MHZ  ),
@@ -36,7 +37,7 @@ clocks  u_clocks(
     .clk_hdmi    (clk_hdmi    ),
     .clk_ppu     (clk_ppu     ),
     .clk_cpu     (clk_cpu     ),
-    .clk_cpum2   (clk_cpum2   ),
+    .cpu_phase    (cpu_phase    ),
     .locked      (locked      ),
     .rst_tdms    (rst_tdms    ),
     .rst_hdmi    (rst_hdmi    ),
@@ -45,8 +46,9 @@ clocks  u_clocks(
 );
 
     assign  LED[0] = SW[0]; 
-    assign  LED[1] = frame_sync; 
-    assign  LED[2] = locked; 
+    assign  LED[1] = SW[1]; 
+    assign  LED[2] = frame_sync; 
+    assign  LED[3] = locked; 
 
     logic nmi, cpu_rw;
     logic [15:0] cpu_addr;
@@ -68,9 +70,10 @@ clocks  u_clocks(
         .data_i (cpu_data_i )
     );
 
+    // pulse cs for one ppu clock on tail end of cpu cycle
+    wire cpu_ppu_cs = (cpu_phase==2) & (cpu_addr[15:13] == 3'h1);
 
-    // not sure if this is a good idea to add clock to comb....
-    wire cpu_ppu_cs = clk_cpum2 & (cpu_addr[15:13] == 3'h1);
+
     wire [2:0] cpu_ppu_addr = cpu_addr[2:0];
 
     logic [7:0] ppu_data_rd,ppu_data_wr;
@@ -116,7 +119,11 @@ clocks  u_clocks(
     logic [23:0] pal [63:0];
     initial $readmemh(`PALFILE, pal);
 
-    wire [23:0] rgb_p = pal[px_data[5:0]];
+    wire [5:0] px_data_test = btn[3] ? {4'b0,SW} : px_data[5:0];
+    wire [23:0] rgb_p = btn[2] ? {SW[1], 7'h0, SW[0], 15'h0} :
+                        btn[1] ? {px_data[5:4], 6'h0, px_data[3:2], 6'h0, px_data[1:0], 6'h0} :
+                        pal[px_data_test];
+
 
     logic [9:0] hx, hy;
     logic [23:0] rgb_h;

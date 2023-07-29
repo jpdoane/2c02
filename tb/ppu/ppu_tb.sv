@@ -36,15 +36,15 @@ module ppu_tb #(
     endgenerate
 
 
-    wire clk_ppu, clk_cpu, clk_cpum2;
+    wire clk_ppu, clk_cpu;
     wire rst_ppu, rst_cpu;
-
+    wire [1:0] cpu_phase;
     clocks u_clocks(
         .CLK_125MHZ (CLK_125MHZ ),
         .rst_clocks  (rst_clocks    ),
         .clk_ppu    (clk_ppu    ),
         .clk_cpu    (clk_cpu    ),
-        .clk_cpum2    (clk_cpum2    ),
+        .cpu_phase    (cpu_phase    ),
         .rst_ppu    (rst_ppu    ),
         .rst_cpu    (rst_cpu    )
     );
@@ -69,11 +69,10 @@ module ppu_tb #(
         .data_i (cpu_data_i )
     );
 
+    // pulse cs for one ppu clock on tail end of cpu cycle
+    wire cpu_ppu_cs = (cpu_phase==2) & (cpu_addr[15:13] == 3'h1);
 
-    // not sure if this is a good idea to add clock to comb....
-    wire cpu_ppu_cs = clk_cpum2 & (cpu_addr[15:13] == 3'h1);
     wire [2:0] cpu_ppu_addr = cpu_addr[2:0];
-
     logic [7:0] ppu_data_rd,ppu_data_wr;
     logic ppu_rd, ppu_wr;
     wire ppu_rw = !ppu_wr;

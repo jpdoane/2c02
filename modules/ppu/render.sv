@@ -79,13 +79,11 @@ module render #( parameter EXTERNAL_FRAME_TRIGGER=0 )
             vblank <= 0;
             y <= -1; //prerender
             cycle <= 0;
-            load_sr<=0;
             return00 <= 0;
             postrender <= 0;
             prerender <= 1;
             sp_eval <= 0;
 
-            inc_cx <= 0;
             inc_y <= 0;
             load_sp_sr <= 0;
             sp0 <= 0;
@@ -108,7 +106,6 @@ module render #( parameter EXTERNAL_FRAME_TRIGGER=0 )
             cycle <= cycle + 1; 
 
             sp0 <= (sp0_opaque && bg_opaque) || sp0;
-            inc_cx <= 0;
             inc_y <= 0;
             load_sp_sr <= 0;
             return00 <= prerender && return00;

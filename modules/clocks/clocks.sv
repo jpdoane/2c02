@@ -14,7 +14,7 @@ module clocks
     output        clk_hdmi,    
     output        clk_ppu,     
     output        clk_cpu,     
-    output        clk_cpum2,
+    output        [1:0] cpu_phase,
     output        locked,
     output        rst_tdms,
     output        rst_hdmi,
@@ -23,9 +23,15 @@ module clocks
     );
 
 logic locked1;
-logic [1:0] cpu_cnt3 = 2'b0;
+logic [1:0] cpu_cnt3;
 wire cpu_en = (cpu_cnt3 == 2'd2 );
-wire cpum2_en = (cpu_cnt3 == 2'd1 );
+assign cpu_phase = cpu_cnt3;
+
+always_ff @(posedge clk_ppu)
+begin
+    if (rst_ppu) cpu_cnt3 <= 0;
+    else cpu_cnt3 <= cpu_en ? 0 : cpu_cnt3 + 1;
+end
 
 `ifdef SYNTHESIS
     mmcm_hdmi u_mmcm_hdmi
@@ -50,16 +56,16 @@ wire cpum2_en = (cpu_cnt3 == 2'd1 );
     .I(clk_ppu)
     );
 
-    BUFGCE BUFGCE_cpum2 (
-    .O(clk_cpum2),
-    .CE(cpum2_en),
-    .I(clk_ppu)
-    );
+    // BUFGCE BUFGCE_cpum2 (
+    // .O(clk_cpum2),
+    // .CE(cpum2_en),
+    // .I(clk_ppu)
+    // );
 
 
 `else
     logic locked_r, clk_hdmi_r, clk_hdmi_x5_r, clk_ppu_r;
-    logic clk_cpu_r, clk_cpum2_r;
+    logic clk_cpu_r; //, clk_cpum2_r;
     // simulate clocks
 
     initial begin
@@ -69,7 +75,7 @@ wire cpum2_en = (cpu_cnt3 == 2'd1 );
         clk_hdmi_x5_r = 0;
         clk_ppu_r = 0;
         clk_cpu_r = 0;
-        clk_cpum2_r = 0;
+        // clk_cpum2_r = 0;
     end
 
     always @(rst_clocks) begin
@@ -102,10 +108,8 @@ wire cpum2_en = (cpu_cnt3 == 2'd1 );
 
 	always_ff @(posedge clk_ppu)
 	begin
-        if (rst_ppu) cpu_cnt3 <= 0;
-        else cpu_cnt3 <= cpu_en ? 0 : cpu_cnt3 + 1;
         clk_cpu_r <= cpu_en;
-        clk_cpum2_r <= cpum2_en;
+        // clk_cpum2_r <= cpum2_en;
 	end
 
     assign locked = locked_r;
@@ -113,7 +117,7 @@ wire cpum2_en = (cpu_cnt3 == 2'd1 );
     assign clk_hdmi_x5 = clk_hdmi_x5_r;
     assign clk_ppu = clk_ppu_r;
 	assign clk_cpu = clk_cpu_r;
-	assign clk_cpum2 = clk_cpum2_r;
+	// assign clk_cpum2 = clk_cpum2_r;
 
 `endif
 

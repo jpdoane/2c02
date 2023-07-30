@@ -126,12 +126,11 @@ end
 	assign rst_hdmi = ~locked1;
 	assign rst_ppu = ~locked;
 
-    logic rst_cpu_r = 1;
-    logic rst_cpu_rr = 1;
-    logic rst_cpu_rrr = 1;
-	always_ff @(posedge clk_ppu) rst_cpu_rrr <= ~locked;
-	always_ff @(posedge clk_cpu) rst_cpu_rr <= rst_cpu_rrr;
-	always_ff @(posedge clk_cpu) rst_cpu_r <= rst_cpu_rr;
-	assign  rst_cpu = rst_cpu_r;
+    logic [7:0] rst_cpu_sr;
+	always_ff @(posedge clk_ppu) begin
+        if (rst_ppu) rst_cpu_sr <= 8'hff;
+        else rst_cpu_sr <= rst_cpu_sr << 1;
+    end
+    assign rst_cpu = rst_cpu_sr[7];
 
 endmodule

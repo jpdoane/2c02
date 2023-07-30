@@ -57,7 +57,9 @@ $(SYNTH_ENV): $(BUILD_ENV) $(SYNTH_TCL) $(SYNTH_ARGS_TCL)
 
 $(SYNTH): $(SYNTH_ENV)
 	cd $(SYNTH_PATH) && \
-	vivado -m64 -mode batch -notrace -source $(SYNTH_TCL) -tclargs $(TOP) $(DEVICE) $(BUILD_PATH)
+	vivado -m64 -mode batch -notrace -source $(SYNTH_TCL) -tclargs $(TOP) $(DEVICE) $(BUILD_PATH) \
+	|| $(call FAIL, SYNTHESIS, true)
+	$(call SUCCEED, SYNTHESIS, false)
 
 #place & route
 IMPL_PATH=$(BUILD_PATH)/impl
@@ -80,8 +82,9 @@ $(IMPL_ENV): $(BUILD_ENV) $(IMPL_TCL) $(BITFILE_TCL) $(PROGRAM_TCL) $(IMPL_ARGS_
 
 $(IMPL): $(IMPL_ENV) $(SYNTH)
 	cd $(IMPL_PATH) && \
-	vivado -m64 -mode batch -notrace -source $(IMPL_TCL)  -tclargs $(TOP) $(DEVICE) $(SYNTH) $(BUILD_PATH)
-
+	vivado -m64 -mode batch -notrace -source $(IMPL_TCL) -tclargs $(TOP) $(DEVICE) $(SYNTH) $(BUILD_PATH) \
+	|| $(call FAIL, IMPLEMENTATION, true)
+	$(call SUCCEED, IMPLEMENTATION, true)
 
 # bitfile
 BITFILE=$(IMPL_PATH)/$(TOP).bit

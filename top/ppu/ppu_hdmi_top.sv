@@ -6,7 +6,8 @@ module ppu_hdmi_top #(
     parameter OSCREEN_WIDTH =  10'd720,
     parameter OSCREEN_HEIGHT =  10'd480,
     parameter OFRAME_WIDTH =  10'd858,
-    parameter OFRAME_HEIGHT =  10'd525
+    parameter OFRAME_HEIGHT =  10'd525,
+    parameter PPU_LATENCY = 3
 )
 (
   input CLK_125MHZ,
@@ -57,13 +58,14 @@ clocks  u_clocks(
 
     cpu_sim 
     #(
-        .SCROLLX_PER_FRAME (1 ),
-        .SCROLLY_PER_FRAME (0 )
+        .AUTOSCROLL_FRAMES (1)
     )
     u_cpu_sim(
         .clk    (clk_cpu    ),
         .rst    (rst_cpu    ),
         .nmi    (nmi    ),
+        .left    (btn[2]    ),
+        .right    (btn[1]    ),
         .rw     (cpu_rw     ),
         .addr   (cpu_addr   ),
         .data_o (cpu_data_o ),
@@ -119,10 +121,8 @@ clocks  u_clocks(
     logic [23:0] pal [63:0];
     initial $readmemh(`PALFILE, pal);
 
-    wire [5:0] px_data_test = btn[3] ? {4'b0,SW} : px_data[5:0];
-    wire [23:0] rgb_p = btn[2] ? {SW[1], 7'h0, SW[0], 15'h0} :
-                        btn[1] ? {px_data[5:4], 6'h0, px_data[3:2], 6'h0, px_data[1:0], 6'h0} :
-                        pal[px_data_test];
+    logic [23:0] rgb_p;
+    always @(posedge clk_ppu) rgb_p <= pal[px_data[5:0]];
 
 
     logic [9:0] hx, hy;
@@ -138,7 +138,7 @@ clocks  u_clocks(
         .OSCREEN_HEIGHT (OSCREEN_HEIGHT),
         .OFRAME_WIDTH (OFRAME_WIDTH),
         .OFRAME_HEIGHT (OFRAME_HEIGHT),
-        .IPIXEL_LATENCY (ISCREEN_WIDTH)
+        .IPIXEL_LATENCY (IFRAME_WIDTH + PPU_LATENCY)
     )
     u_hdmi_upscaler (
         .clk_p     (clk_ppu     ),

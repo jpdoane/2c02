@@ -5,7 +5,7 @@ module ppu_tb #(
 
     // sim timing
     parameter real FRAME_TIME = 1e9/60.0,
-    parameter SIM_LENGTH = 2.25*FRAME_TIME
+    parameter SIM_LENGTH = 1.1*FRAME_TIME
 
 )();
 
@@ -56,13 +56,15 @@ module ppu_tb #(
 
     cpu_sim 
     #(
-        .SCROLLX_PER_FRAME (3 ),
-        .SCROLLY_PER_FRAME (0 )
+        .START_X (70),
+        .AUTOSCROLL_FRAMES (1)
     )
     u_cpu_sim(
         .clk    (clk_cpu    ),
         .rst    (rst_cpu    ),
         .nmi    (nmi    ),
+        .left (0),
+        .right (0),
         .rw     (cpu_rw     ),
         .addr   (cpu_addr   ),
         .data_o (cpu_data_o ),

@@ -1,5 +1,5 @@
 
-include ../../inc/make.paths
+include ../../inc/make.inc
 
 TOP=ppu_hdmi_top
 DEVICE=xc7z010clg400-1

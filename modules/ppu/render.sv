@@ -136,9 +136,9 @@ module render #( parameter EXTERNAL_FRAME_TRIGGER=0 )
                     SCREEN_WIDTH:   begin px_en <= 0; inc_y <= 1; sp_eval <= rend; end
                     CYCLE_RESETON:  begin return00 <= prerender; end
                     CYCLE_RESETOFF: return00 <= 0;
-                    CYCLE_SPDONE:   begin sp_eval <= 0; load_sp_sr <= vis_line; end
+                    CYCLE_SPDONE:   begin sp_eval <= 0; load_sp_sr <= vis_line; y<=ynext; end
                     CYCLE_BADFETCH: sr_en <= 0;
-                    CYCLE_LAST:     begin sr_en <=1; cycle <= 0; y<=ynext; end
+                    CYCLE_LAST:     begin sr_en <=1; cycle <= 0; end
                 endcase
             end    
         end
@@ -210,12 +210,13 @@ module render #( parameter EXTERNAL_FRAME_TRIGGER=0 )
         end
     end
 
-    // select bg pixel and palette
-    logic [7:0] tile_sr0_out, tile_sr1_out;
-    assign tile_sr0_out = tile_sr0[15:8];
-    assign tile_sr1_out = tile_sr1[15:8];
-    wire [1:0] bg_px = {tile_sr1_out[fine_x], tile_sr0_out[fine_x]};
-    wire [1:0] bg_pal = {pal_sr1[fine_x], pal_sr0[fine_x]};
+    // fine_x=0 selects MSB, 7 selects LSB, so flip bit order for SR output
+    wire [0:7] tile_sr0_flip = tile_sr0[15:8];
+    wire [0:7] tile_sr1_flip = tile_sr1[15:8];
+    wire [0:7] pal_sr0_flip = pal_sr0[7:0];
+    wire [0:7] pal_sr1_flip = pal_sr1[7:0];
+    wire [1:0] bg_px = {tile_sr1_flip[fine_x], tile_sr0_flip[fine_x]};
+    wire [1:0] bg_pal = {pal_sr1_flip[fine_x], pal_sr0_flip[fine_x]};
 
     // sprite object memory
     oam u_oam(

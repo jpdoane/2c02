@@ -1,5 +1,5 @@
 
-include ../../inc/make.paths
+include ../../inc/make.inc
 
 TOP=ppu_tb
 HDL_SOURCE = $(CLK_SOURCE) $(HDMI_SOURCE) $(PPU_SOURCE) video_png.sv $(TOP).sv
